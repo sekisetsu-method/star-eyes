@@ -141,6 +141,7 @@ class ControlVolumeTank():
 		self.colorLightParticles = pygame.Color(255, 0, 255)
 		self.colorHistogramUp = (0, 146, 255)
 		self.colorHistogramDown = (255, 0, 255)
+		self.colorEntrySignal = (0, 255, 100)
 		self.mousehingejoint = -1.0
 		self.edgeBoxes = []
 		self.candlestickBoxes = []
@@ -624,7 +625,22 @@ class ControlVolumeTank():
 			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
-		# HISTOGRAM
+		# DRAW VERTICAL LINE AT POINT OF LOWEST STANDARD DEV
+		# find the low points in the standard dev
+		# put all the Y values of the standard deviation in a separate list
+		# an entry in the list looks like [[0, 900], [10, 639.1957450511611]]
+		# we want to look a the second nested list, and only the Y component
+		# the higher this number is, the lower it occurs on the chart, i.e. the lowest standard dev value
+		tmpList = []
+		for index in range(0, len(self.standardDefList)):
+			tmpList.append( self.standardDefList[index][1][1] )
+
+		tmpX = self.standardDefList[tmpList.index( max(tmpList) )][1][0]
+		tmpY = max(tmpList) # returns what represents the lowest standard dev value
+		print(tmpX, tmpY)
+		self.draw.line(( tmpX, 0, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
+
+		# DRAW HISTOGRAM AT TOP OF CHART
 		for r in range(0, len(imbalanceRatioArray)):
 			self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.specialNumber(), r, 100+imbalanceRatioArray[r][0]*self.specialNumber()), \
 				fill=(self.colorHistogramUp), width=1 )
@@ -636,6 +652,7 @@ class ControlVolumeTank():
 
 		img.save(self.renderHistogramDirectory + self.histogramAnimationDir + self.truncatedDatasetFileName + "_hist_" + self.numberFormatter(self.offsetIndex)  +  ".png", format='PNG')
 		print(self.datasetFile + " simulation done.")
+
 
 		# img.show()
 
