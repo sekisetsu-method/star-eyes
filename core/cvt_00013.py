@@ -8,7 +8,7 @@ __version__ = "13.0"
 __date__    = "14 April 2018"
 
 #--- LICENSE ------------------------------------------------------------------
-# This code cvt_[version number].py and all software created by Sekisetsu Method and or the author(s) covered by the MIT License.
+# This code cvt_[version number].py and all software created by Sekisetsu Method and or Arlo Emerson or other designated authors covered by the MIT License.
 
 # MIT License
 
@@ -35,7 +35,7 @@ __date__    = "14 April 2018"
 #--- THE SEKISETSU METHOD EXPLAINED -------------------------------------------
 '''
 WHAT IT IS
-Sekisetsu is a Japanese word for snowfall accumulation. The Sekisetsu Method (積雪メソッド) combines price action geometry (candlesticks) with fluid dynamics to reveal otherwise hidden structure and market participant intention in the price chart. The method can also be termed "Price Action Fluid Dynamics". Many terms and ideas from fluid dynamics and chaotic systems are borrowed and used both in the code and as allegory in the training material. Regardless of terminology, the goal of the method is to empower the user to align trades with larger players. 
+Sekisetsu is a Japanese word for snowfall accumulation. The Sekisetsu Method (積雪メソッド) combines price action geometry (candlesticks) with fluid dynamics to reveal otherwise hidden structure and market participant intention in price charts. The method can also be termed "Price Action Fluid Dynamics". Many terms and ideas from fluid dynamics and chaotic systems are borrowed and used both in the code and as allegory in the training material. Regardless of terminology, the goal of the method is to empower the user to align trades with larger players. 
 
 HOW IT WORKS
 OHLC price action data (in the form of a modified candlestick chart) creates the surfaces and boundaries within a control volume tank (CVT). The tank is filled with both heavy and light particles. The particles accumulate in the cavities and recesses of the price action surfaces. The pooling of particles results in three patterns: top-heavy, bottom-heavy and stagnant accumulations. These differences can be viewed directly on the chart, and are further expressed as an "imbalance ratio histogram". A standard deviation method is employed to locate relatively stagnant periods of price action. It is these periods of lower volotility coinciding with imbalances in particle accumulation where major entry signals emerge, revealing both the location and trading direction of large players, i.e. market makers. 
@@ -94,9 +94,9 @@ class ControlVolumeTank():
 		self.frameLimit = 200 # 150 or 200 for production
 		self.renderFramesDirectory = "../simulations/"
 		self.renderHistogramDirectory = "../histograms/"
-		self.codeName = "mongoose_hunter"
+		self.codeName = "star_eyes"
 		self.permutationName = __version__
-		self.histogramAnimationDir = __version__+"/" 
+		self.histogramAnimationDir = self.codeName + "_" + __version__ + "/" 
 		self.particleShapeMode = "CIRCLE"
 		self.particleDiameter = .1
 		self.coefficientRestitution = 0.1 #0.01
@@ -137,10 +137,16 @@ class ControlVolumeTank():
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
 		self.colorStandardDeviation = pygame.Color("yellow")
-		self.colorHeavyParticles = pygame.Color(0, 136, 255)
-		self.colorLightParticles = pygame.Color(255, 0, 246)
-		self.colorHistogramUp = (140,140,140)
-		self.colorHistogramDown = (140,140,140)
+		# self.colorHeavyParticles = pygame.Color(0, 136, 255)
+		# self.colorLightParticles = pygame.Color(255, 0, 246)
+
+		self.colorHeavyParticles = pygame.Color(0, 146, 255)
+		self.colorLightParticles = pygame.Color(255, 0, 255)
+		# (0, 146, 255)
+		# (255, 0, 255)
+
+		self.colorHistogramUp = (0, 146, 255)
+		self.colorHistogramDown = (255, 0, 255)
 		self.mousehingejoint = -1.0
 		self.edgeBoxes = []
 		self.candlestickBoxes = []
@@ -582,11 +588,6 @@ class ControlVolumeTank():
 
 	def makeHistogram(self, pImg):
 
-		#blue water = 19,132,228
-		#pink magma = 255,5,252
-		# self.colorHeavyParticles = pygame.Color(0, 136, 255)
-		# self.colorLightParticles = pygame.Color(255, 0, 246)
-		
 		img = Image.open(pImg)
 
 		img_bbox = img.getbbox()
@@ -597,19 +598,19 @@ class ControlVolumeTank():
 
 		for xx in range( img.size[0] ):
 
-			waterCounter = 0.0
-			magmaCounter = 0.0
+			heavyParticleCounter = 0.0
+			lightParticleCounter = 0.0
 
 			tmpOffset = 12
 			for yy in range(tmpOffset, img.size[1] - tmpOffset): # filter out particle detritus from the histogram data
 
 				if pixels[ xx, yy ] == (0, 146, 255):
-					waterCounter += 1.0
-				elif pixels[ xx, yy ] == (255, 0, 246):
-					magmaCounter += 1.0
+					heavyParticleCounter += 1.0
+				elif pixels[ xx, yy ] == (255, 0, 255):
+					lightParticleCounter += 1.0
 
-			imbalanceRatio1 = (waterCounter+1.0)/(magmaCounter+1.0)
-			imbalanceRatio2 = (magmaCounter+1.0)/(waterCounter+1.0)
+			imbalanceRatio1 = (heavyParticleCounter+1.0)/(lightParticleCounter+1.0)
+			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
 			
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
