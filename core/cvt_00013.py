@@ -69,7 +69,7 @@ The software is open source, highly configurable, and easily lends itself to int
 
 import os as os
 os.environ['SDL_VIDEODRIVER']='dummy' # use this if running bash ubuntu on windows
-import pygame, sys, math, random, csv
+import pygame, sys, math, random, csv, glob, subprocess, shutil
 from pygame.locals import *
 from lib.extremephysics import *
 from numpy import interp
@@ -91,7 +91,7 @@ class ControlVolumeTank():
 		self.datasetFile = '' # overridden
 		self.saveSequences = True
 		self.particlesBirthCount = 0 # overridden
-		self.frameLimit = 200 # 150 or 200 for production
+		self.frameLimit = 200 # 200 for production
 		self.renderFramesDirectory = "../simulations/"
 		self.renderHistogramDirectory = "../histograms/"
 		self.codeName = "star_eyes"
@@ -137,14 +137,8 @@ class ControlVolumeTank():
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
 		self.colorStandardDeviation = pygame.Color("yellow")
-		# self.colorHeavyParticles = pygame.Color(0, 136, 255)
-		# self.colorLightParticles = pygame.Color(255, 0, 246)
-
 		self.colorHeavyParticles = pygame.Color(0, 146, 255)
 		self.colorLightParticles = pygame.Color(255, 0, 255)
-		# (0, 146, 255)
-		# (255, 0, 255)
-
 		self.colorHistogramUp = (0, 146, 255)
 		self.colorHistogramDown = (255, 0, 255)
 		self.mousehingejoint = -1.0
@@ -560,9 +554,28 @@ class ControlVolumeTank():
 
 				self.makeHistogram( tmpFileName )
 
+				self.makeVideoFromSequences()
+
 				self.run = False
 
 		self.game_end()
+
+	def makeVideoFromSequences(self):
+		tmpDir = self.renderFramesDirectory + self.truncatedDatasetFileName + "/"
+
+		files = sorted( glob.glob( tmpDir + '*.png') )
+
+		if len( files ) == 0:
+			print("nothing to convert in " + tmpDir)
+			return
+
+		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -qscale:v 1 -y " + self.renderFramesDirectory + "/" + self.truncatedDatasetFileName + ".mpg"
+		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.renderFramesDirectory + "/" + self.truncatedDatasetFileName + ".mp4"
+
+		os.system( arg )
+
+		# delete all PNGs from this location when done.
+		shutil.rmtree(tmpDir)
 
 	def numberFormatter(self, pNum):
 		return "%03d" % (pNum,)
@@ -589,10 +602,8 @@ class ControlVolumeTank():
 	def makeHistogram(self, pImg):
 
 		img = Image.open(pImg)
-
 		img_bbox = img.getbbox()
 		self.draw = ImageDraw.Draw(img)
-
 		pixels = img.load()
 		imbalanceRatioArray = []
 
@@ -600,8 +611,8 @@ class ControlVolumeTank():
 
 			heavyParticleCounter = 0.0
 			lightParticleCounter = 0.0
-
 			tmpOffset = 12
+
 			for yy in range(tmpOffset, img.size[1] - tmpOffset): # filter out particle detritus from the histogram data
 
 				if pixels[ xx, yy ] == (0, 146, 255):
@@ -611,7 +622,6 @@ class ControlVolumeTank():
 
 			imbalanceRatio1 = (heavyParticleCounter+1.0)/(lightParticleCounter+1.0)
 			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
-			
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
 		# HISTOGRAM
@@ -669,7 +679,7 @@ for f in foundFiles:
 	
 print( "Found " + str( len(foundFiles)) + " " + _fileType + " files.")
 
-arbitraryRunLimit = 100
+arbitraryRunLimit = 10
 for i in range(0, arbitraryRunLimit): 
 
 	for dataset in _datasetList: # loop all datasets
