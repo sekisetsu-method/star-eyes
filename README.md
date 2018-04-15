@@ -18,6 +18,8 @@ SETUP & USAGE
 * CSV files need to live in the "csv" folder at project root.
 * Histograms are created in the "histograms" folder at project root.
 * Simulations (frame by frame PNGs of the simulation) are created in the "simulations" folder at project root.
+* mp4 videos are created from simulation sequences. These allow you to see the particle distribution in action.
+* To autogenerate CSV files from MetaTrader4, place the config/CSV_WRITER.mq4 indicator in your application's "Indicators" folder. On Windows this is usually something like 'C:\Users\<USER>\AppData\Roaming\MetaQuotes\Terminal\<GUID>\MQL4\Indicators'. MetaTrader4 will write the CSV to 'C:\Users\<USER>\AppData\Roaming\MetaQuotes\Terminal\<GUID>\MQL4\Files'. Write a shell script to regularly copy this file to the "csv" directory located in this project's root. 
 
 To run the program: 
 * Use PIP to install all requirements (see requirements.txt).
