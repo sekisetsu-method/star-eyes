@@ -31,7 +31,7 @@ SIGNAL ANALYSIS
 -----------------------------------------------------------------------------
 Signal analysis consists of coinciding low points in the standard deviation with high points in a given particle accumulation. This typically occurs during the lull period prior to the London open, although the signal can occur in many variations throughout the trading day. 
 
-v13 "star-eyes" is optimized for USDJPY 15m chart data.
+v13 "star-eyes" is optimized for USDJPY 15m chart data but will work with any OHLC data (currencies, equities or crypto).
 
 ADD'L NOTES
 -----------------------------------------------------------------------------
