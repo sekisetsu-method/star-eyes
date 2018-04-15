@@ -1,9 +1,8 @@
 # star-eyes
 v13 - production ready
 
---------------------------------------------------------------------------
 THE SEKISETSU METHOD EXPLAINED
---------------------------------------------------------------------------
+=============================================================================
 
 ## WHAT IT IS ##
 Sekisetsu is a Japanese word for snowfall accumulation. The Sekisetsu Method (積雪メソッド) combines price action geometry (candlesticks) with fluid dynamics to reveal otherwise hidden structure and market participant intention in price charts. The method can also be termed "Price Action Fluid Dynamics". Many terms and ideas from fluid dynamics and chaotic systems are borrowed and used both in the code and as allegory in the training material. Regardless of terminology, the goal of the method is to empower the user to align trades with larger players. 
@@ -13,32 +12,29 @@ OHLC price action data (in the form of a modified candlestick chart) creates the
 
 The software is open source, highly configurable, and easily lends itself to integration with existing trading systems.
 
---------------------------------------------------------------------------
 SETUP & USAGE
---------------------------------------------------------------------------
+=============================================================================
 
-• CSV files need to live in the "csv" folder at project root.
-• Histograms are created in the "histograms" folder at project root.
-• Simulations (frame by frame PNGs of the simulation) are created in the "simulations" folder at project root.
+* CSV files need to live in the "csv" folder at project root.
+* Histograms are created in the "histograms" folder at project root.
+* Simulations (frame by frame PNGs of the simulation) are created in the "simulations" folder at project root.
 
 To run the program: 
-• Use PIP to install all requirements (see requirements.txt).
-• Add CSV files to the "csv" folder at project root.
-• If running native linux, comment out os.environ['SDL_VIDEODRIVER']='dummy'
+* Use PIP to install all requirements (see requirements.txt).
+* Add CSV files to the "csv" folder at project root.
+* If running native linux, comment out os.environ['SDL_VIDEODRIVER']='dummy'
 	(This is a Windows workaround when running the Ubuntu shell on Windows. Running in native linux will display the game window. Windows will run in a kind of silent mode, but will still perform all calculations and produce the histograms and animations.)
-• from a shell, run:
+* from a shell, run:
 	$ python cvt_[version_number].py
 
---------------------------------------------------------------------------
 SIGNAL ANALYSIS
---------------------------------------------------------------------------
+=============================================================================
 Signal analysis consists of coinciding low points in the standard deviation with high points in a given particle accumulation. This typically occurs during the lull period prior to the London open, although the signal can occur in many variations throughout the trading day. 
 
 v13 "star-eyes" is optimized for USDJPY 15m chart data.
 
---------------------------------------------------------------------------
 ADD'L NOTES
---------------------------------------------------------------------------
+=============================================================================
 Project website: http://www.sekisetsumethod.com
 
 Thanks to Maarten Baert's excellent physics engine (licensed under LGPL).
