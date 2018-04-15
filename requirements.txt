@@ -1,0 +1,10 @@
+###### Requirements without Version Specifiers ######
+pygame
+numpy
+pillow
+ffmpeg
+
+###### Extreme Physics, place in "lib" folder  ######
+_extremephysics.so
+extremephysics.py
+#
