@@ -683,19 +683,16 @@ class ControlVolumeTank():
 # This particular flavor uses CSV files containing OHLC data. These files can be static or
 # dynamically updated, provided they adhere to the structure as included in sample CSV.
 # Place or write all CSV files in the "csv" folder at project root.
+# Or store the relative path to your CSV files in the app.yaml 
+appYaml = open("../config/app.yaml", "r").readlines()
+pathToCSVs = appYaml[0].split(":")[1] # TODO: make this a little smarter
+# print(pathToCSVs)
 
 _datasetList = []
 
-foundFiles = [os.path.join(dirpath, f)
-	for dirpath, dirnames, files in os.walk(_targetDir)
-	for f in files if f.endswith(_fileType)]
-
-for f in foundFiles:
-	print(f)
-	_datasetList.append(f)
+for csvfile in sorted( glob.glob(pathToCSVs + "/*.csv") ):
+	_datasetList.append(csvfile)
 	
-print( "Found " + str( len(foundFiles)) + " " + _fileType + " files.")
-
 arbitraryRunLimit = 10
 for i in range(0, arbitraryRunLimit): 
 
