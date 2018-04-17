@@ -46,8 +46,8 @@ int start()
 		return(0);
 	}
 
-	//tmpFileName = Symbol() + "_" + Period() + "m_" + date + "_" + StringReplace(time, ":", "-") + ".csv";
-  tmpFileName = Symbol() + "_" + Period() + "m_" + date + ".csv";
+
+  tmpFileName = Symbol() + "_" + Period() + "m_" + date + "_" + Hour() + "." + Minute() + ".csv";
 
 	handlefile = FileOpen(tmpFileName, FILE_CSV|FILE_WRITE, " ");
 
