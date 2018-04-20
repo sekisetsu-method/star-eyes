@@ -686,22 +686,25 @@ class ControlVolumeTank():
 # Or store the relative path to your CSV files in the app.yaml 
 appYaml = open("../config/app.yaml", "r").readlines()
 pathToCSVs = appYaml[0].split(":")[1] # TODO: make this a little smarter
-# print(pathToCSVs)
 
 _datasetList = []
+files = glob.glob(pathToCSVs + "/*.csv")
+files.sort(key=os.path.getmtime)
+sortList = []
 
-for csvfile in sorted( glob.glob(pathToCSVs + "/*.csv") ):
+for csvfile in reversed(files):
 	_datasetList.append(csvfile)
-	
-arbitraryRunLimit = 10
+
+arbitraryRunLimit = 100
 for i in range(0, arbitraryRunLimit): 
 
-	for dataset in _datasetList: # loop all datasets
+	for dataset in _datasetList[:3]: # loop all datasets
 		# to loop iterations within a dataset use
 		# for i in range(0, 100):		
 		cvt = ControlVolumeTank()
-		# rs.offsetIndex = i  # uncomment when looping iterations within a dataset
+		# cvt.offsetIndex = i  # uncomment when looping iterations within a dataset
 		cvt.datasetFile = dataset
+		print( "running dataset: ", dataset )
 		random.seed()
 		cvt.setParticleDiameter( 2 )
 		cvt.setCandlestickWidth( 3 )
