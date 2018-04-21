@@ -69,7 +69,7 @@ The software is open source, highly configurable, and easily lends itself to int
 
 import os as os
 os.environ['SDL_VIDEODRIVER']='dummy' # use this if running bash ubuntu on windows
-import pygame, sys, math, random, csv, glob, subprocess, shutil
+import pygame, sys, math, random, csv, glob, subprocess, shutil, heapq
 from pygame.locals import *
 from lib.extremephysics import *
 from numpy import interp
@@ -635,10 +635,24 @@ class ControlVolumeTank():
 		for index in range(0, len(self.standardDefList)):
 			tmpList.append( self.standardDefList[index][1][1] )
 
-		tmpX = self.standardDefList[tmpList.index( max(tmpList) )][1][0]
-		tmpY = max(tmpList) # returns what represents the lowest standard dev value
-		print(tmpX, tmpY)
-		self.draw.line(( tmpX, 0, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
+		# this works fine for the lowest, but only one result 
+		# tmpX = self.standardDefList[tmpList.index( max(tmpList) )][1][0]
+		# tmpY = max(tmpList) # returns what represents the lowest standard dev value
+		# # print(tmpX, tmpY)
+		# self.draw.line(( tmpX, 0, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
+
+		# ----- TEST AREA -----------------------------------------------------------------------	
+		# TODO: determine if we can be smarter about how many lines to show per sigma low
+
+		largest = heapq.nlargest(40, enumerate(tmpList), key=lambda x: x[1])
+
+		for item in largest:
+			print( item )
+
+			tmpX = self.standardDefList[item[0]][1][0]
+			tmpY = item[1]
+			self.draw.line(( tmpX, 150, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
+		# ----------------------------------------------------------------------------------------
 
 		# DRAW HISTOGRAM AT TOP OF CHART
 		for r in range(0, len(imbalanceRatioArray)):
