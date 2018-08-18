@@ -243,12 +243,11 @@ class ControlVolumeTank():
 		self.datasetHighest = int( round( float( max(tmpList))  ) ) +1
 
 		firstRowRead = 0
-		rowCount = 0
 		for row in self.dataset:
 			self.paintCandle(row) # returns 0 if row volume is empty
 			self.candleIndex += 1
 
-		self.printVerbose( str(rowCount) + " records in data set" )
+		self.printVerbose( str(self.candleIndex) + " records in data set" )
 
 		slashLocation = self.datasetFile.rfind('/') 
 		directory = self.datasetFile[slashLocation+1:]
