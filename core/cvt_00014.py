@@ -579,6 +579,9 @@ class ControlVolumeTank():
 
 				self.makeHistogram( tmpFileName )
 
+				# Delete the temp file
+				os.system( "rm " + tmpFileName )
+
 				self.makeVideoFromSequences()
 
 				self.run = False
