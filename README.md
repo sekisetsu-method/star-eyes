@@ -1,5 +1,5 @@
 # star-eyes
-v13 - production ready
+v13 and v14 - production ready
 
 THE SEKISETSU METHOD EXPLAINED
 -----------------------------------------------------------------------------
