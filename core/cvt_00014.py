@@ -742,8 +742,7 @@ class ControlVolumeTank():
 #--- RUNTIME NOTES  --------------------------------------------------------------------
 # This particular flavor uses CSV files containing OHLC data. These files can be static or
 # dynamically updated, provided they adhere to the structure as included in sample CSV.
-# Place or write all CSV files in the "csv" folder at project root.
-# Or store the relative path to your CSV files in the app.yaml 
+# Place or write all CSV files in the directory specified in app.yaml.
 app_yaml = open("../config/app.yaml", "r").readlines()
 path_to_csv_files = app_yaml[0].split(":")[1] # TODO: make this a little smarter
 
