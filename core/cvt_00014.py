@@ -58,7 +58,7 @@ The software is open source, highly configurable, and easily lends itself to int
 #------------------------------------------------------------------------------
 
 #--- NOTES --------------------------------------------------------------------
-# Project website: http://www.sekisetsumethod.com
+# Project website with how-to and trading ideas: http://www.sekisetsumethod.com
 
 # See the README file for detailed information on usage.
 # See http://www.sekisetsumethod.com for charts, signals and training.
