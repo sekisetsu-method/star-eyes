@@ -83,7 +83,6 @@ particle_birth_count = 1280 # should match window width
 
 # Particle/fluid simulations occur within a Control Volume Tank. 
 # The current settings in this version are tuned to USDJPY 15 and 30 minute chart data.
-# Make a copy of this class and try other settings and data sources.
 class ControlVolumeTank():
 
 	def __init__(self):
