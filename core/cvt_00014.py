@@ -87,9 +87,9 @@ particle_birth_count = 1280 # should match window width
 class ControlVolumeTank():
 
 	def __init__(self):
-		# print(self.__class__.__name__, __version__)
-		# print("Running " + TextColors.HEADERLEFT3 + TextColors.INVERTED + self.__class__.__name__ + " " + \
-		# TextColors.ENDC + " version " + __version__ + " of Sekisetsu Method Star Eyes fork.")
+		print(self.__class__.__name__, __version__)
+		print("Running " + TextColors.HEADERLEFT3 + TextColors.INVERTED + self.__class__.__name__ + " " + \
+			TextColors.ENDC + " version " + __version__ + " of Sekisetsu Method Star Eyes fork.")
 
 		self.dataset_file = '' # overridden
 		self.save_sequences = True
@@ -755,7 +755,7 @@ arbitraryRunLimit = 99 # The number of times to run the simulation
 for i in range(0, arbitraryRunLimit): 
 
 	files = glob.glob(path_to_csv_files + "/*.csv") # Get all the CSV files
-	
+
 	files.sort(key=os.path.getmtime) # Sort the files based on latest
 	for csvfile in reversed(files):
 		dataset_list.append(csvfile) # Add the files to a list
