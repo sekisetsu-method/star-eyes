@@ -1,5 +1,5 @@
 # star-eyes
-v13 and v14 - production ready
+v14 - production ready
 
 THE SEKISETSU METHOD EXPLAINED
 -----------------------------------------------------------------------------
@@ -15,7 +15,7 @@ The software is open source, highly configurable, and easily lends itself to int
 SETUP & USAGE
 -----------------------------------------------------------------------------
 
-* CSV files need to live in the "csv" folder at project root.
+* CSV files location is set in the config/app.yaml. 
 * Histograms are created in the "histograms" folder at project root.
 * Simulations (frame by frame PNGs of the simulation) are created in the "simulations" folder at project root.
 * mp4 videos are created from simulation sequences. These allow you to see the particle distribution in action.
@@ -23,17 +23,17 @@ SETUP & USAGE
 
 To run the program: 
 * Use PIP to install all requirements (see requirements.txt).
-* Add CSV files to the "csv" folder at project root.
+* Add CSV files to a location set in the config/app.yaml. 
 * If running native linux, comment out os.environ['SDL_VIDEODRIVER']='dummy'
-	(This is a Windows workaround when running the Ubuntu shell on Windows. Running in native linux will display the game window. Windows will run in a kind of silent mode, but will still perform all calculations and produce the histograms and animations.)
+	(This environment var is a Windows workaround when running the Ubuntu shell on Windows. Running in native linux will display the game window. Windows will run in a kind of silent mode, but will still perform all calculations and produce the histograms and animations.)
 * from a shell, run:
-	$ python cvt_[version_number].py
+	$ python cvt_00014.py --sigmaperiod 23 --highlightsigma True -v
 
 SIGNAL ANALYSIS
 -----------------------------------------------------------------------------
 Signal analysis consists of coinciding low points in the standard deviation with high points in a given particle accumulation. This typically occurs during the lull period prior to the London open, although the signal can occur in many variations throughout the trading day. 
 
-v13-v14 "star-eyes" is optimized for USDJPY 15m chart data but will work with any OHLC data (currencies, equities or crypto).
+v14 "star-eyes" is optimized for USDJPY 15m chart data but will work with any OHLC data (currencies, equities or crypto).
 
 ADD'L NOTES
 -----------------------------------------------------------------------------
