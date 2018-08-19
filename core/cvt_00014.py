@@ -72,14 +72,13 @@ os.environ['SDL_VIDEODRIVER']='dummy' # Use this if running the Ubuntu bash on w
 import pygame, sys, math, random, csv, glob, subprocess, shutil, heapq, argparse, textwrap
 import lib.standard_deviation_function as sdef
 import lib.TextColors as TextColors
-# from pygame.locals import *
 from lib.extremephysics import *
 from numpy import interp
 from PIL import Image, ImageDraw
 
-_targetDir = "../csv/"
-_fileType = '.csv'
-_particleBirthCount = 1280 # should match window width
+target_dir = "../csv/"
+file_type = '.csv'
+particle_birth_count = 1280 # should match window width
 
 # Particle/fluid simulations occur within a Control Volume Tank. 
 # The current settings in this version are tuned to USDJPY 15 and 30 minute chart data.
@@ -90,38 +89,38 @@ class ControlVolumeTank():
 		# print(self.__class__.__name__, __version__)
 		print("Running " + TextColors.HEADERLEFT3 + TextColors.INVERTED + self.__class__.__name__ + " " + TextColors.ENDC + " version " + __version__ + " of Sekisetsu Method Star Eyes fork.")
 
-		self.datasetFile = '' # overridden
-		self.saveSequences = True
-		self.particlesBirthCount = 0 # overridden
-		self.frameLimit = 200 # 200 for production
-		self.renderFramesDirectory = "../simulations/"
-		self.renderHistogramDirectory = "../histograms/"
-		self.codeName = "star_eyes"
-		self.permutationName = __version__
-		self.histogramAnimationDir = self.codeName + "_" + __version__ + "/" 
-		self.particleShapeMode = "CIRCLE"
-		self.particleDiameter = .1
-		self.coefficientRestitution = 0.1 #0.01
-		self.friction = 0.1
-		self.datasetHighestIndex = 0
-		self.datasetLowestIndex = 0
+		self.dataset_file = '' # overridden
+		self.save_sequences = True
+		self.particles_birth_count = 0 # overridden
+		self.FRAME_LIMIT = 200 # 200 for production
+		self.render_frames_directory = "../simulations/"
+		self.render_histogram_directory = "../histograms/"
+		self.code_name = "star_eyes"
+		self.permutation_name = __version__
+		self.histogram_animation_directory = self.code_name + "_" + __version__ + "/" 
+		self.PARTICLE_SHAPE_MODE = "CIRCLE"
+		self.PARTICLE_DIAMETER = .1
+		self.COEFFICIENT_RESTITUTION = 0.1 #0.01
+		self.FRICTION = 0.1
+		self.DATASET_HIGHEST_INDEX = 0
+		self.DATASET_LOWEST_INDEX = 0
 		self.draw = ImageDraw.Draw
-		self.newDevX = 0
-		self.previousSDefX = 0
-		self.previousSDefY = 900
-		self.standardDefStartY = 900 # these should match
-		self.frameRate = 24 
-		self.candlestickWidth = 1
-		self.newXDefaultVal = 10
-		self.containerWallsWidth = 2
-		self.candleGutter = 3
+		self.new_sdev_x = 0
+		self.previous_sdev_x = 0
+		self.previous_sdev_y = 900
+		self.standard_dev_start_y = 900 # these should match
+		self.FRAME_RATE = 24 
+		self.CANDLESTICK_WIDTH = 1
+		self.new_x_default_value = 10
+		self.CONTAINER_WALLS_WIDTH = 2
+		self.CANDLE_GUTTER = 3
 		self.run = True
-		self.datasetLowest = 107 # overridden, used for scaling the chart into this game window
-		self.datasetHighest = 111  # overridden
-		self.offsetIndex = 0 # global used for cycling through the T axis
-		self.truncatedDatasetFileName = ""
-		self.paintableLimit = 1268 # used as a canvas limit so there are some venting gaps on L and R side of chart
-		self.heightScalingFactor = 1.1 # set to 1.2 initially. if things are getting truncated, lower this number to fit more into the screen
+		self.DATASET_LOWEST = 107 # overridden, used for scaling the chart into this game window
+		self.DATASET_HIGHEST = 111  # overridden
+		self.offset_index = 0 # used for cycling through the T axis
+		self.truncated_dataset_file_name = ""
+		self.PAINTABLE_LIMIT = 1268 # used as a canvas limit so there are some venting gaps on L and R side of chart
+		self.HEIGHT_SCALING_FACTOR = 1.1 # set to 1.2 initially. if things are getting truncated, lower this number to fit more into the screen
 		# note: set to negative number to do interesting head-on particle collisions.
 
 		random.seed()
@@ -138,29 +137,32 @@ class ControlVolumeTank():
 		self.mouse_x = 0
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
-		self.colorStandardDeviation = pygame.Color("yellow")
-		self.colorHeavyParticles = pygame.Color(0, 146, 255)
-		self.colorLightParticles = pygame.Color(255, 0, 255)
-		self.colorHistogramUp = (0, 146, 255)
-		self.colorHistogramDown = (255, 0, 255)
-		self.colorEntrySignal = (0, 255, 100)
-		self.mousehingejoint = -1.0
-		self.edgeBoxes = []
-		self.candlestickBoxes = []
-		self.heavyParticles = []
-		self.lightParticles = []
-		self.standardDefList = []
-		self.newX = self.newXDefaultVal
+		self.COLOR_STANDARD_DEVIATION = pygame.Color("yellow")
+		self.COLOR_HEAVY_PARTICLES = pygame.Color(0, 146, 255)
+		self.COLOR_LIGHT_PARTICLES = pygame.Color(255, 0, 255)
+		self.COLOR_HISTOGRAM_UP = (0, 146, 255)
+		self.COLOR_HISTOGRAM_DOWN = (255, 0, 255)
+		self.COLOR_ENTRY_SIGNAL = (0, 255, 100)
+		self.MOUSE_HINGE_JOINT = -1.0
+		self.edge_boxes = []
+		self.candlestick_boxes = []
+		self.heavy_particles = []
+		self.light_particles = []
+		self.standard_dev_list = []
+		self.new_x = self.new_x_default_value
 		self.index_counter = 0
 		self.verbose = False
 		self.debug = False
 		self.candleIndex = 0
+		self.highlightSigma = False # can be overridden by passing in -highlightsigma argument
+		self.sigmaPeriod = 17 # can be overridden by passing in -sigmaperiod argument
 
-		helpMessage = 'See README.md and setup_instructions.md for specifics. Otherwise, just run ' + TextColors.OKGREEN + 'python cvt_00014.py ' + TextColors.ENDC
+		helpMessage = 'See README.md and setup_instructions.md for specifics. Otherwise, try ' + TextColors.OKGREEN + 'python cvt_00014.py --sigmaperiod 23 --highlightsigma True -v ' + TextColors.ENDC
 
 		parser = argparse.ArgumentParser(description=helpMessage, 
-			epilog=textwrap.dedent('''asdf'''), formatter_class=argparse.RawTextHelpFormatter)
-		parser.add_argument('-x', '--x', dest='x', required=False, help="not implemented")
+			epilog=textwrap.dedent('''---'''), formatter_class=argparse.RawTextHelpFormatter)
+		parser.add_argument('-s', '--highlightsigma', dest='highlightsigma', required=False, help="Paint lines from low sigma regions to the top of the chart. This helps isolate important areas in the histogram.")
+		parser.add_argument('-p', '--sigmaperiod', dest='sigmaperiod', required=False, help="The sigma period used to calculate the standard deviation. Default is 17.")
 		parser.add_argument('-v','--verbose', dest='verbose', action='store_true', help="Explain what is being done.")
 		parser.add_argument('-d','--debug', dest='debug', action='store_true', help="Lower level messages for debugging.")		
 		parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
@@ -173,6 +175,12 @@ class ControlVolumeTank():
 		if args.debug:
 			self.debug = True
 
+		if args.highlightsigma: # by default we don't paint the sigma lines
+			self.highlightSigma = True
+
+		if args.sigmaperiod: 
+			self.sigmaPeriod = int( args.sigmaperiod )
+
 		if args.debug and args.verbose:
 			self.printDebug("Running in verbose mode with debug messages.")
 		elif args.debug and not args.verbose:
@@ -181,7 +189,7 @@ class ControlVolumeTank():
 			self.printVerbose("Running in verbose mode.")
 
 	def setDatasetFile(self, pFileName):
-		self.datasetFile = pFileName
+		self.dataset_file = pFileName
 
 	def draw_box(self, x, y, w, h, rot, color):
 		points = [[-w / 2.0, -h / 2.0], [w / 2.0, -h / 2.0], [w / 2.0, h / 2.0], [-w / 2.0, h / 2.0]]
@@ -198,13 +206,13 @@ class ControlVolumeTank():
 	def drawGrowingRectangle(self, pInt):
 		points = (20,20,50+pInt, 30)
 		# TODO: make this grow automatically
-		pygame.draw.rect(self.surf_window, self.colorStandardDeviation, points, 1)
+		pygame.draw.rect(self.surf_window, self.COLOR_STANDARD_DEVIATION, points, 1)
 
 	def drawStandardDevLine(self, pCoords):
-		pygame.draw.line(self.surf_window, self.colorStandardDeviation, pCoords[0], pCoords[1], 1)
+		pygame.draw.line(self.surf_window, self.COLOR_STANDARD_DEVIATION, pCoords[0], pCoords[1], 1)
 
 	def initDataset(self):	
-		csvfile = open(self.datasetFile, 'r')
+		csvfile = open(self.dataset_file, 'r')
 		lines = csvfile.readlines() 
 		
 		rowCount = 0
@@ -214,8 +222,8 @@ class ControlVolumeTank():
 		tmpDataSet = []
 
 		# this reverse orders the orig data so we can paint from left to right with it
-		startIndex = rowCount - self.offsetIndex - 315
-		for i in range( startIndex, rowCount - self.offsetIndex ):
+		startIndex = rowCount - self.offset_index - 315
+		for i in range( startIndex, rowCount - self.offset_index ):
 			tmpDataSet.append(lines[i])
 		
 		self.dataset = tmpDataSet
@@ -239,8 +247,8 @@ class ControlVolumeTank():
 			# if tmpCount == 0:
 			# 	tmpCount = 1
 
-		self.datasetLowest = int( round( float( min(tmpList))  ) ) -1
-		self.datasetHighest = int( round( float( max(tmpList))  ) ) +1
+		self.DATASET_LOWEST = int( round( float( min(tmpList))  ) ) -1
+		self.DATASET_HIGHEST = int( round( float( max(tmpList))  ) ) +1
 
 		firstRowRead = 0
 		for row in self.dataset:
@@ -249,10 +257,10 @@ class ControlVolumeTank():
 
 		self.printVerbose( str(self.candleIndex) + " records in data set" )
 
-		slashLocation = self.datasetFile.rfind('/') 
-		directory = self.datasetFile[slashLocation+1:]
-		self.truncatedDatasetFileName = directory[:-4] #trim off the '.csv'
-		self.printVerbose( self.truncatedDatasetFileName )
+		slashLocation = self.dataset_file.rfind('/') 
+		directory = self.dataset_file[slashLocation+1:]
+		self.truncated_dataset_file_name = directory[:-4] #trim off the '.csv'
+		self.printVerbose( self.truncated_dataset_file_name )
 
 	def game_start(self):
 		
@@ -263,7 +271,7 @@ class ControlVolumeTank():
 		self.initDataset()
 
 		self.mouseParticleId = self.getStaticBodyId()
-		self.mousehingejoint = -1.0
+		self.MOUSE_HINGE_JOINT = -1.0
 		particlePosition_X = 10
 
 		# HOW TO SET THE FRICTIONS...
@@ -275,63 +283,63 @@ class ControlVolumeTank():
 
 		# physics boundaries of the stage, AKA the Control Volume Tank.
 		# MAKE FLOOR
-		tmpW = self.WINDOW_WIDTH - self.containerWallsWidth
-		tmpH = self.containerWallsWidth
+		tmpW = self.WINDOW_WIDTH - self.CONTAINER_WALLS_WIDTH
+		tmpH = self.CONTAINER_WALLS_WIDTH
 		tmpX = self.WINDOW_WIDTH / 2
-		tmpY = self.WINDOW_HEIGHT - self.containerWallsWidth
+		tmpY = self.WINDOW_HEIGHT - self.CONTAINER_WALLS_WIDTH
 
 		# ep_shape_create_box(world_id, body_id, w, h, x, y, rot, density)
 		tmpBodyId = self.getStaticBodyId()
-		self.edgeBoxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
+		self.edge_boxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
 		shape = ep_shape_create_box(self.world, tmpBodyId, tmpW, tmpH, tmpX, tmpY, math.radians(0), 1)
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
-		ep_shape_set_material(self.world, tmpBodyId, shape, self.coefficientRestitution, self.friction, 0, 0)
+		ep_shape_set_material(self.world, tmpBodyId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 
 		# LEFT WALL
-		tmpW = self.containerWallsWidth
-		tmpH = self.WINDOW_HEIGHT - self.containerWallsWidth
+		tmpW = self.CONTAINER_WALLS_WIDTH
+		tmpH = self.WINDOW_HEIGHT - self.CONTAINER_WALLS_WIDTH
 		tmpX = 0
 		tmpY = self.WINDOW_HEIGHT / 2
 
 		tmpBodyId = self.getStaticBodyId()
-		self.edgeBoxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
+		self.edge_boxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
 		shape = ep_shape_create_box(self.world, tmpBodyId, tmpW, tmpH, tmpX, tmpY, math.radians(0), 1)
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
-		ep_shape_set_material(self.world, tmpBodyId, shape, self.coefficientRestitution, self.friction, 0, 0)
+		ep_shape_set_material(self.world, tmpBodyId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 
 		# RIGHT WALL
-		tmpW = self.containerWallsWidth
-		tmpH = self.WINDOW_HEIGHT - self.containerWallsWidth
-		tmpX = self.WINDOW_WIDTH - self.containerWallsWidth
+		tmpW = self.CONTAINER_WALLS_WIDTH
+		tmpH = self.WINDOW_HEIGHT - self.CONTAINER_WALLS_WIDTH
+		tmpX = self.WINDOW_WIDTH - self.CONTAINER_WALLS_WIDTH
 		tmpY = self.WINDOW_HEIGHT / 2
 
 		tmpBodyId = self.getStaticBodyId()
-		self.edgeBoxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
+		self.edge_boxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
 		shape = ep_shape_create_box(self.world, tmpBodyId, tmpW, tmpH, tmpX, tmpY, math.radians(0), 1)
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
-		ep_shape_set_material(self.world, tmpBodyId, shape, self.coefficientRestitution, self.friction, 0, 0)
+		ep_shape_set_material(self.world, tmpBodyId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 
 		# MAKE CEILING
-		tmpW = self.WINDOW_WIDTH - self.containerWallsWidth
-		tmpH = self.containerWallsWidth
+		tmpW = self.WINDOW_WIDTH - self.CONTAINER_WALLS_WIDTH
+		tmpH = self.CONTAINER_WALLS_WIDTH
 		tmpX = self.WINDOW_WIDTH / 2
-		tmpY = self.containerWallsWidth
+		tmpY = self.CONTAINER_WALLS_WIDTH
 
 		tmpBodyId = self.getStaticBodyId()
-		self.edgeBoxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
+		self.edge_boxes.append([tmpW, tmpH, tmpX, tmpY, math.radians(0)])
 		shape = ep_shape_create_box(self.world, tmpBodyId, tmpW, tmpH, tmpX, tmpY, math.radians(0), 1)
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
-		ep_shape_set_material(self.world, tmpBodyId, shape, self.coefficientRestitution, self.friction, 0, 0)
+		ep_shape_set_material(self.world, tmpBodyId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 
 		# GENERATE PARTICLES
 		particleCount = 0
-		for i in range(0, self.particlesBirthCount):
+		for i in range(0, self.particles_birth_count):
 
 			# HEAVY PARTICLES
 			tmpId = self.getDynamicBodyId()
 			shape = self.getParticleShape(tmpId)
 			ep_shape_set_collision(self.world, tmpId, shape, 1, 1, 0)
-			ep_shape_set_material(self.world, tmpId, shape, self.coefficientRestitution, self.friction, 0, 0)
+			ep_shape_set_material(self.world, tmpId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 			ep_body_calculate_mass(self.world, tmpId)
 
 			if particlePosition_X >= self.WINDOW_WIDTH:
@@ -340,19 +348,19 @@ class ControlVolumeTank():
 				particlePosition_X += 1
 			ep_body_set_position(self.world, tmpId, particlePosition_X, 10, math.radians(0))
 			ep_body_set_gravity(self.world, tmpId, 0, 1.0)
-			self.heavyParticles.append(tmpId)
+			self.heavy_particles.append(tmpId)
 			particleCount += 1
 
 			# LIGHTWEIGHT PARTICLES
 			tmpId = self.getDynamicBodyId()
 			shape = self.getParticleShape(tmpId) 
 			ep_shape_set_collision(self.world, tmpId, shape, 1, 1, 0)
-			ep_shape_set_material(self.world, tmpId, shape, self.coefficientRestitution, self.friction, 0, 0)
+			ep_shape_set_material(self.world, tmpId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 			ep_body_calculate_mass(self.world, tmpId)
 
 			ep_body_set_position(self.world, tmpId, particlePosition_X, self.WINDOW_HEIGHT-10, math.radians(0))
 			ep_body_set_gravity(self.world, tmpId, 0, -1.0)
-			self.lightParticles.append(tmpId)
+			self.light_particles.append(tmpId)
 			particleCount += 1
 
 	def getParticleShape(self, tmpId):
@@ -362,13 +370,13 @@ class ControlVolumeTank():
 		# 0,0,0: the relative coordinates of the shape (x,y,rot).
 		# 1: the density of the circle (not used for static bodies).
 
-		if self.particleShapeMode == "CIRCLE":
-			return ep_shape_create_circle(self.world, tmpId, self.particleDiameter,0,0,0,1);
+		if self.PARTICLE_SHAPE_MODE == "CIRCLE":
+			return ep_shape_create_circle(self.world, tmpId, self.PARTICLE_DIAMETER,0,0,0,1);
 		else: #default square
-			return ep_shape_create_box(self.world, tmpId, self.particleDiameter, self.particleDiameter, 0, 0, 0, 1)
+			return ep_shape_create_box(self.world, tmpId, self.PARTICLE_DIAMETER, self.PARTICLE_DIAMETER, 0, 0, 0, 1)
 
 	def paintCandle(self, pRow):
-		if self.newX >= self.paintableLimit: # no matter the record count, limit candles to window width
+		if self.new_x >= self.PAINTABLE_LIMIT: # no matter the record count, limit candles to window width
 			return 0
 
 		if pRow == []:
@@ -386,11 +394,11 @@ class ControlVolumeTank():
 		priceClose = self.interpolate(float(pRow.split(",")[5]))
 		# volume = float(pRow[6])
 
-		if self.datasetHighest == priceHigh:
-			self.datasetHighestIndex = self.candleIndex
+		if self.DATASET_HIGHEST == priceHigh:
+			self.DATASET_HIGHEST_INDEX = self.candleIndex
 
-		if self.datasetLowest == priceLow:
-			self.datasetLowestIndex = self.candleIndex
+		if self.DATASET_LOWEST == priceLow:
+			self.DATASET_LOWEST_INDEX = self.candleIndex
 
 		# experimental, use to filter out zero volume periods
 		# if volume == 0:
@@ -404,8 +412,8 @@ class ControlVolumeTank():
 		candleHeight = abs(candleHeight)
 
 		tmpBodyId = self.getStaticBodyId()
-		self.edgeBoxes.append([self.candlestickWidth, candleHeight, self.newX, newY, math.radians(0)])
-		shape = ep_shape_create_box(self.world, tmpBodyId, self.candlestickWidth, candleHeight, self.newX, newY, math.radians(0), 1)
+		self.edge_boxes.append([self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0)])
+		shape = ep_shape_create_box(self.world, tmpBodyId, self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0), 1)
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
 		tmpCoef = 2
 		tmpFric = 1
@@ -416,25 +424,25 @@ class ControlVolumeTank():
 		standardDef = sdef.getStandardDeviation(sdSet).real
 		standardDef *= (math.pow(  math.pi*self.getPhi()  , 4) )
 		
-		self.standardDefList.append([[self.previousSDefX, self.previousSDefY], [self.newX, self.standardDefStartY-standardDef]])
-		self.previousSDefX = self.newX
-		self.previousSDefY = self.standardDefStartY-standardDef			
+		self.standard_dev_list.append([[self.previous_sdev_x, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDef]])
+		self.previous_sdev_x = self.new_x
+		self.previous_sdev_y = self.standard_dev_start_y-standardDef			
 
-		self.newX += (self.candlestickWidth + self.candleGutter)
+		self.new_x += (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
 
 		return 1
 
 	def getXLocationOfCandle(self, pIndex):
-		tmpAdd = self.newXDefaultVal
+		tmpAdd = self.new_x_default_value
 		for i in range(0, pIndex):
-			tmpAdd += (self.candlestickWidth + self.candleGutter)
+			tmpAdd += (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
 		return tmpAdd
 
 	def getLastNPrices(self, pIndex):
 		tmpList = []
 		returnList = []
 		dsSubset = []
-		lookback = 17
+		lookback = self.sigmaPeriod
 
 		dsSubset.append( self.dataset[pIndex] )
 		try:
@@ -463,7 +471,7 @@ class ControlVolumeTank():
 		return ep_body_create_dynamic(self.world, False)
 
 	def interpolate(self, pVal):
-		newVal = interp(pVal, [self.datasetLowest, self.datasetHighest ], [self.WINDOW_HEIGHT*self.heightScalingFactor, 0])
+		newVal = interp(pVal, [self.DATASET_LOWEST, self.DATASET_HIGHEST ], [self.WINDOW_HEIGHT*self.HEIGHT_SCALING_FACTOR, 0])
 		return newVal
 
 	def game_end(self):	
@@ -491,9 +499,9 @@ class ControlVolumeTank():
 							ep_hingejoint_set_max_force(self.world, mousehingejoint, 10000)
 				elif event.type == MOUSEBUTTONUP:
 					self.mouse_x, self.mouse_y = event.pos
-					if self.mousehingejoint != -1.0:
-						ep_hingejoint_destroy(self.world, self.mousehingejoint)
-						self.mousehingejoint = -1.0
+					if self.MOUSE_HINGE_JOINT != -1.0:
+						ep_hingejoint_destroy(self.world, self.MOUSE_HINGE_JOINT)
+						self.MOUSE_HINGE_JOINT = -1.0
 				elif event.type == KEYDOWN:
 					if event.key == K_ESCAPE:
 						pygame.event.post(pygame.event.Event(QUIT))
@@ -503,7 +511,7 @@ class ControlVolumeTank():
 			
 			vx = self.mouse_x - ep_body_get_x_center(self.world, self.mouseParticleId)
 			vy = self.mouse_y - ep_body_get_y_center(self.world, self.mouseParticleId)
-			if self.mousehingejoint != -1.0:
+			if self.MOUSE_HINGE_JOINT != -1.0:
 				d = math.sqrt(vx * vx + vy * vy)
 				if d > 10:
 					vx *= 10 / d
@@ -517,65 +525,66 @@ class ControlVolumeTank():
 			self.surf_window.lock()
 			self.surf_window.fill(pygame.Color(0, 0, 0))
 			
-			for b in self.edgeBoxes:
+			for b in self.edge_boxes:
 				self.draw_box(b[2], b[3], b[0], b[1], b[4], self.color_static)
 			
-			for b in self.heavyParticles:
+			for b in self.heavy_particles:
 				self.draw_box(ep_body_get_x(self.world, b), \
-					ep_body_get_y(self.world, b), self.particleDiameter, self.particleDiameter, ep_body_get_rot(self.world, b), \
-					self.colorHeavyParticles)
+					ep_body_get_y(self.world, b), self.PARTICLE_DIAMETER, self.PARTICLE_DIAMETER, ep_body_get_rot(self.world, b), \
+					self.COLOR_HEAVY_PARTICLES)
 			
-			for b in self.lightParticles:
+			for b in self.light_particles:
 
 				self.draw_box(ep_body_get_x(self.world, b), \
-					ep_body_get_y(self.world, b), self.particleDiameter, self.particleDiameter, ep_body_get_rot(self.world, b), \
-					self.colorLightParticles)
+					ep_body_get_y(self.world, b), self.PARTICLE_DIAMETER, self.PARTICLE_DIAMETER, ep_body_get_rot(self.world, b), \
+					self.COLOR_LIGHT_PARTICLES)
 			
-			for b in self.candlestickBoxes:
+			for b in self.candlestick_boxes:
 				self.draw_box(b[2], b[3], b[0], b[1], b[4], self.color_static)
 			
 			
-			for b in self.standardDefList:
+			for b in self.standard_dev_list:
 				self.drawStandardDevLine(b)
 
-			pygame.display.set_caption(self.truncatedDatasetFileName + "    |||    " + str( self.offsetIndex  ) + " steps back " )
+			pygame.display.set_caption(self.truncated_dataset_file_name + "    |||    " + str( self.offset_index  ) + " steps back " )
 
 			self.surf_window.unlock()
 			
-			self.displayTextLarge(self.truncatedDatasetFileName, 1000, 18, pygame.Color(255, 255, 255))
+			self.displayTextLarge(self.truncated_dataset_file_name, 1000, 18, pygame.Color(255, 255, 255))
 						
 			# chart labels
-			text = "----" + str(self.datasetHighest)
-			self.displayText(text, self.interpolate(self.datasetHighest + 2), self.getXLocationOfCandle(self.datasetHighestIndex),\
+			text = "----" + str(self.DATASET_HIGHEST)
+			self.displayText(text, self.interpolate(self.DATASET_HIGHEST + 2), self.getXLocationOfCandle(self.DATASET_HIGHEST_INDEX),\
 				pygame.Color(255, 255, 0))
 
 			pygame.display.update()
-			self.fpsclock.tick(self.frameRate)
+			self.fpsclock.tick(self.FRAME_RATE)
 
 			self.index_counter += 1
 
 			# make another frame for the animation
-			if self.saveSequences == True:
+			if self.save_sequences == True:
 
-				if not os.path.exists(self.renderFramesDirectory + self.truncatedDatasetFileName):
-					os.makedirs(self.renderFramesDirectory + self.truncatedDatasetFileName)
+				if not os.path.exists(self.render_frames_directory + self.truncated_dataset_file_name):
+					os.makedirs(self.render_frames_directory + self.truncated_dataset_file_name)
 
-				tmpDir = self.renderFramesDirectory + self.truncatedDatasetFileName + "/" + self.codeName + "_" + self.numberFormatter( self.index_counter )
+				tmpDir = self.render_frames_directory + self.truncated_dataset_file_name + "/" + self.code_name + "_" + self.numberFormatter( self.index_counter )
 
 				pygame.image.save(self.surf_window, tmpDir  + ".png")
 
 			# make the histogram
-			if self.index_counter == self.frameLimit:
+			if self.index_counter == self.FRAME_LIMIT:
 				
-				tmpFileName = self.renderHistogramDirectory + self.truncatedDatasetFileName + ".png"
-				
+				tmpFileName = self.render_histogram_directory + self.truncated_dataset_file_name + ".png"
+					
 				# make the histogram folder if it's absent
-				if not os.path.exists(self.renderHistogramDirectory):
-					os.makedirs(self.renderHistogramDirectory)
+				if not os.path.exists(self.render_histogram_directory):
+					os.makedirs(self.render_histogram_directory)
 
-				self.printVerbose( "preparing final frame output to " + tmpFileName ) 
+				self.printVerbose( "Preparing final frame output to " + tmpFileName ) 
 				pygame.image.save(self.surf_window, tmpFileName)
 
+				# if self.makeHistogram == True:
 				self.makeHistogram( tmpFileName )
 
 				# Delete the temp file
@@ -588,7 +597,7 @@ class ControlVolumeTank():
 		self.game_end()
 
 	def makeVideoFromSequences(self):
-		tmpDir = self.renderFramesDirectory + self.truncatedDatasetFileName + "/"
+		tmpDir = self.render_frames_directory + self.truncated_dataset_file_name + "/"
 
 		files = sorted( glob.glob( tmpDir + '*.png') )
 
@@ -596,10 +605,16 @@ class ControlVolumeTank():
 			print("nothing to convert in " + tmpDir)
 			return
 
-		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -qscale:v 1 -y " + self.renderFramesDirectory + "/" + self.truncatedDatasetFileName + ".mpg"
-		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.renderFramesDirectory + "/" + self.truncatedDatasetFileName + ".mp4"
+		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -qscale:v 1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mpg"
+		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mp4"
 
 		os.system( arg )
+
+		# make an AVI so we can convert into GIF
+		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".avi"
+
+		os.system( arg )
+
 
 		# delete all PNGs from this location when done.
 		shutil.rmtree(tmpDir)
@@ -650,69 +665,71 @@ class ControlVolumeTank():
 			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
-		# DRAW VERTICAL LINE AT POINT OF LOWEST STANDARD DEV
-		# find the low points in the standard dev
-		# put all the Y values of the standard deviation in a separate list
-		# an entry in the list looks like [[0, 900], [10, 639.1957450511611]]
-		# we want to look a the second nested list, and only the Y component
-		# the higher this number is, the lower it occurs on the chart, i.e. the lowest standard dev value
-		tmpList = []
-		for index in range(0, len(self.standardDefList)):
-			tmpList.append( self.standardDefList[index][1][1] )
+		if self.highlightSigma == True:
 
-		# this works fine for the lowest, but only one result 
-		# tmpX = self.standardDefList[tmpList.index( max(tmpList) )][1][0]
-		# tmpY = max(tmpList) # returns what represents the lowest standard dev value
-		# # print(tmpX, tmpY)
-		# self.draw.line(( tmpX, 0, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
+			# DRAW VERTICAL LINE AT POINT OF LOWEST STANDARD DEV
+			# find the low points in the standard dev
+			# put all the Y values of the standard deviation in a separate list
+			# an entry in the list looks like [[0, 900], [10, 639.1957450511611]]
+			# we want to look a the second nested list, and only the Y component
+			# the higher this number is, the lower it occurs on the chart, i.e. the lowest standard dev value
+			tmpList = []
+			for index in range(0, len(self.standard_dev_list)):
+				tmpList.append( self.standard_dev_list[index][1][1] )
 
-		# ----- TEST AREA -----------------------------------------------------------------------	
-		# TODO: determine if we can be smarter about how many lines to show per sigma low
+			# this works fine for the lowest, but only one result 
+			# tmpX = self.standard_dev_list[tmpList.index( max(tmpList) )][1][0]
+			# tmpY = max(tmpList) # returns what represents the lowest standard dev value
+			# # print(tmpX, tmpY)
+			# self.draw.line(( tmpX, 0, tmpX, tmpY ), fill=(self.COLOR_ENTRY_SIGNAL), width=1 )
 
-		largest = heapq.nlargest(40, enumerate(tmpList), key=lambda x: x[1])
+			# ----- TEST AREA -----------------------------------------------------------------------	
+			# TODO: determine if we can be smarter about how many lines to show per sigma low
 
-		for item in largest:
-			self.printDebug( item )
+			largest = heapq.nlargest(40, enumerate(tmpList), key=lambda x: x[1])
 
-			tmpX = self.standardDefList[item[0]][1][0]
-			tmpY = item[1]
-			self.draw.line(( tmpX, 150, tmpX, tmpY ), fill=(self.colorEntrySignal), width=1 )
-		# ----------------------------------------------------------------------------------------
+			for item in largest:
+				self.printDebug( item )
+
+				tmpX = self.standard_dev_list[item[0]][1][0]
+				tmpY = item[1]
+				self.draw.line(( tmpX, 150, tmpX, tmpY ), fill=(self.COLOR_ENTRY_SIGNAL), width=1 )
+			# ----------------------------------------------------------------------------------------
 
 		# Draw histogram at the top of the chart
 		for r in range(0, len(imbalanceRatioArray)):
 			self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.specialNumber(), r, 100+imbalanceRatioArray[r][0]*self.specialNumber()), \
-				fill=(self.colorHistogramUp), width=1 )
+				fill=(self.COLOR_HISTOGRAM_UP), width=1 )
 			self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.specialNumber(), r, 100+imbalanceRatioArray[r][1]*self.specialNumber()), \
-				fill=(self.colorHistogramDown), width=1 )
+				fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
 		
-		if not os.path.exists(self.renderHistogramDirectory + self.histogramAnimationDir):
-			os.makedirs(self.renderHistogramDirectory + self.histogramAnimationDir)
+		if not os.path.exists(self.render_histogram_directory + self.histogram_animation_directory):
+			os.makedirs(self.render_histogram_directory + self.histogram_animation_directory)
 
-		img.save(self.renderHistogramDirectory + self.histogramAnimationDir + self.truncatedDatasetFileName + "_hist_" + self.numberFormatter(self.offsetIndex)  +  ".png", format='PNG')
-		self.printVerbose(self.datasetFile + " simulation done.")
+		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_hist_" + self.numberFormatter(self.offset_index)  + "_sig" + str( self.sigmaPeriod ) + ".png", format='PNG')
+		self.printVerbose(self.dataset_file + " simulation done.")
 		# img.show()
 
 	def setPermutationName(self, pIterationNumber):
-		self.permutationName = \
+		self.permutation_name = \
 		str(pIterationNumber) + "_" + \
-		str(self.datasetFile) + "_" + \
-		str(self.particlesBirthCount) + "_" + \
-		str(self.candlestickWidth) + "_" + \
-		str(self.particleDiameter) + "_" + \
-		str(self.candleGutter)
+		str(self.dataset_file) + "_" + \
+		str(self.particles_birth_count) + "_" + \
+		str(self.CANDLESTICK_WIDTH) + "_" + \
+		str(self.PARTICLE_DIAMETER) + "_" + \
+		str(self.CANDLE_GUTTER)
 
 	def setParticlesBirthCount(self, pParticleBirthCount):
-		self.particlesBirthCount = pParticleBirthCount
+		self.particles_birth_count = pParticleBirthCount
 
 	def	setCandlestickWidth(self, pCandlestickWidth):
-		self.candlestickWidth = pCandlestickWidth
+		self.CANDLESTICK_WIDTH = pCandlestickWidth
 
 	def setParticleDiameter(self, pParticleDiameter):
-		self.particleDiameter = pParticleDiameter
+		self.PARTICLE_DIAMETER = pParticleDiameter
 
 	def setCandleGutter(self, pCandleGutter):
-		self.candleGutter = pCandleGutter
+		self.CANDLE_GUTTER = pCandleGutter
 
 	def printVerbose(self, pMessage):
 		if (self.verbose == True):
@@ -727,33 +744,33 @@ class ControlVolumeTank():
 # dynamically updated, provided they adhere to the structure as included in sample CSV.
 # Place or write all CSV files in the "csv" folder at project root.
 # Or store the relative path to your CSV files in the app.yaml 
-appYaml = open("../config/app.yaml", "r").readlines()
-pathToCSVs = appYaml[0].split(":")[1] # TODO: make this a little smarter
+app_yaml = open("../config/app.yaml", "r").readlines()
+path_to_csv_files = app_yaml[0].split(":")[1] # TODO: make this a little smarter
 
-_datasetList = []
-sortList = []
+dataset_list = []
+# sorted_list = []
 
 arbitraryRunLimit = 99 # The number of times to run the simulation
 for i in range(0, arbitraryRunLimit): 
 
-	files = glob.glob(pathToCSVs + "/*.csv") # Get all the CSV files
+	files = glob.glob(path_to_csv_files + "/*.csv") # Get all the CSV files
 	files.sort(key=os.path.getmtime) # Sort the files based on latest
 	for csvfile in reversed(files):
-		_datasetList.append(csvfile) # Add the files to a list
+		dataset_list.append(csvfile) # Add the files to a list
 
-	for dataset in _datasetList[:1]: # Loop up to [:N] datasets e.g. [:3]		
+	for dataset in dataset_list[:1]: # Loop up to [:N] datasets e.g. [:3]		
 		lookback = 1 # To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
 		
 		for i in range(0, lookback):		
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
 
 			if lookback > 1:
-				cvt.offsetIndex = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
-			cvt.datasetFile = dataset
+				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
+			cvt.dataset_file = dataset
 			print( "Running with dataset: ", dataset )
 			random.seed()
 			cvt.setParticleDiameter( 2 )
 			cvt.setCandlestickWidth( 3 )
-			cvt.setParticlesBirthCount( _particleBirthCount ) #4000 for production
+			cvt.setParticlesBirthCount( particle_birth_count ) #4000 for production
 			cvt.setCandleGutter( 1 )
 			cvt.game_run()
