@@ -346,7 +346,8 @@ class ControlVolumeTank():
 				particlePosition_X = 0
 			else:
 				particlePosition_X += 1
-			ep_body_set_position(self.world, tmpId, particlePosition_X, 10, math.radians(0))
+			tmpRadian = random.randrange(0,57)
+			ep_body_set_position(self.world, tmpId, particlePosition_X, 10, math.radians(tmpRadian))
 			ep_body_set_gravity(self.world, tmpId, 0, 1.0)
 			self.heavy_particles.append(tmpId)
 			particleCount += 1
@@ -357,8 +358,8 @@ class ControlVolumeTank():
 			ep_shape_set_collision(self.world, tmpId, shape, 1, 1, 0)
 			ep_shape_set_material(self.world, tmpId, shape, self.COEFFICIENT_RESTITUTION, self.FRICTION, 0, 0)
 			ep_body_calculate_mass(self.world, tmpId)
-
-			ep_body_set_position(self.world, tmpId, particlePosition_X, self.WINDOW_HEIGHT-10, math.radians(0))
+			tmpRadian = random.randrange(0,57)
+			ep_body_set_position(self.world, tmpId, particlePosition_X, self.WINDOW_HEIGHT-10, math.radians(tmpRadian))
 			ep_body_set_gravity(self.world, tmpId, 0, -1.0)
 			self.light_particles.append(tmpId)
 			particleCount += 1
@@ -706,7 +707,9 @@ class ControlVolumeTank():
 		if not os.path.exists(self.render_histogram_directory + self.histogram_animation_directory):
 			os.makedirs(self.render_histogram_directory + self.histogram_animation_directory)
 
-		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_hist_" + self.number_formatter(self.offset_index)  + "_sig" + str( self.sigma_period ) + ".png", format='PNG')
+		current_time = "" # TBD
+
+		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + current_time + "_" + self.number_formatter(self.offset_index)  + "_sig" + str( self.sigma_period ) + ".png", format='PNG')
 		self.print_verbose(self.dataset_file + " simulation done.")
 		# img.show()
 
@@ -746,11 +749,10 @@ class ControlVolumeTank():
 app_yaml = open("../config/app.yaml", "r").readlines()
 path_to_csv_files = app_yaml[0].split(":")[1] # TODO: make this a little smarter
 
-dataset_list = []
-# sorted_list = []
-
 arbitraryRunLimit = 99 # The number of times to run the simulation
 for i in range(0, arbitraryRunLimit): 
+
+	dataset_list = []
 
 	files = glob.glob(path_to_csv_files + "/*.csv") # Get all the CSV files
 
@@ -767,7 +769,7 @@ for i in range(0, arbitraryRunLimit):
 			if lookback > 1:
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
 			cvt.dataset_file = dataset
-			print( "Running with dataset: ", dataset )
+			print( "Current OHLC dataset: " + TextColors.HEADERLEFT2 + TextColors.INVERTED + dataset + TextColors.ENDC)
 			random.seed()
 			cvt.set_particles_diameter( 2 )
 			cvt.set_candlestick_width( 3 )
