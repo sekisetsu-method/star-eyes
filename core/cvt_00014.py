@@ -132,13 +132,13 @@ class ControlVolumeTank():
 		self.WINDOW_HEIGHT = 720
 		self.surf_window = pygame.display.set_mode((self.WINDOW_WIDTH, self.WINDOW_HEIGHT))
 		self.font = pygame.font.SysFont("Sans", 12)	
-		self.font_large = pygame.font.SysFont("Sans", 16)	
+		self.font_large = pygame.font.SysFont("Sans", 24)	
 		self.cx = self.WINDOW_WIDTH / 2
 		self.cy = self.WINDOW_HEIGHT / 2
 		self.mouse_x = 0
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
-		self.COLOR_STANDARD_DEVIATION = pygame.Color("yellow")
+		self.COLOR_STANDARD_DEVIATION = pygame.Color("yellow")		
 		self.COLOR_HEAVY_PARTICLES = pygame.Color(0, 146, 255)
 		self.COLOR_LIGHT_PARTICLES = pygame.Color(255, 0, 255)
 		self.COLOR_HISTOGRAM_UP = (0, 146, 255)
@@ -155,14 +155,28 @@ class ControlVolumeTank():
 		self.verbose = False
 		self.debug = False
 		self.candleIndex = 0
-		self.highlight_sigma = False # can be overridden by passing in -highlightsigma argument
+		self.highlight_sigma = True # can be overridden by passing in -highlightsigma argument
 		self.sigma_period = 17 # can be overridden by passing in -sigmaperiod argument
+		self.show_histogram_ratio = True
+		self.show_histogram_standard_dev = False
+		self.histogram_standard_dev_period = 7
+		self.show_histogram_simple_average = False
+		self.histogram_simple_average_period = 9
+		self.sigma_sort_low = 40
 
-		helpMessage = 'See README.md and setup_instructions.md for specifics. Otherwise, try ' + TextColors.OKGREEN + 'python cvt_00014.py --sigmaperiod 23 --highlightsigma True -v ' + TextColors.ENDC
+		helpMessage = 'See README.md and setup_instructions.md for specifics. Otherwise, try ' + TextColors.OKGREEN + 'python cvt_00014.py --sigmaperiod 23 --highlightsigma True -v ' + TextColors.ENDC + \
+			 " or try " + TextColors.OKGREEN +  "python cvt_00014.py --sigmaperiod 19 -v -hrat False -hsd True -hsdper 34" + TextColors.ENDC
 
 		parser = argparse.ArgumentParser(description=helpMessage, epilog=textwrap.dedent('''---'''), formatter_class=argparse.RawTextHelpFormatter)
 		parser.add_argument('-s', '--highlightsigma', dest='highlightsigma', required=False, help="Paint lines from low sigma regions to the top of the chart. This helps isolate important areas in the histogram.")
 		parser.add_argument('-p', '--sigmaperiod', dest='sigmaperiod', required=False, help="The sigma period used to calculate the standard deviation. Default is 17.")
+		parser.add_argument('-hrat', '--showhistoratio', dest='showhistoratio', required=False, help="Show the histogram ratio lines.")
+		parser.add_argument('-hsd', '--showhistosd', dest='showhistosd', required=False, help="Show a standard deviation line of the histogram.")
+		parser.add_argument('-hsdper', '--histosdperiod', dest='histosdperiod', required=False, help="Histogram standard deviation period. Default is 7.")
+		parser.add_argument('-hsa', '--showhistosimpleaverage', dest='showhistosimpleaverage', required=False, help="Show a simple average line of the histogram.")
+		parser.add_argument('-hsap', '--histosimpleaverageperiod', dest='histosimpleaverageperiod', required=False, help="Histogram simple average period. Default is 9.")
+		parser.add_argument('-ssl', '--sigmasortlow', dest='sigmasortlow', required=False, help="The number of samples to use for highlighting the low points in sigma. Default is 40. Higher numbers will add more lines and include a larger range.")
+
 		parser.add_argument('-v','--verbose', dest='verbose', action='store_true', help="Explain what is being done.")
 		parser.add_argument('-d','--debug', dest='debug', action='store_true', help="Lower level messages for debugging.")		
 		parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
@@ -175,11 +189,25 @@ class ControlVolumeTank():
 		if args.debug:
 			self.debug = True
 
-		if args.highlightsigma: # by default we don't paint the sigma lines
+		if self.string_to_bool(args.highlightsigma):
 			self.highlight_sigma = True
+
+		if self.string_to_bool(args.showhistoratio): 
+			self.show_histogram_ratio = True
+		else:
+			self.show_histogram_ratio = False
 
 		if args.sigmaperiod: 
 			self.sigma_period = int( args.sigmaperiod )
+
+		if args.sigmasortlow: 
+			self.sigma_sort_low = int( args.sigmasortlow )
+
+		if self.string_to_bool(args.showhistosd): 
+			self.show_histogram_standard_dev = True
+
+		if args.histosdperiod:
+			self.histogram_standard_dev_period = int(args.histosdperiod)
 
 		if args.debug and args.verbose:
 			self.print_debug("Running in verbose mode with debug messages.")
@@ -187,6 +215,14 @@ class ControlVolumeTank():
 			self.print_debug("Running in debug mode.")
 		elif args.verbose and not args.debug:
 			self.print_verbose("Running in verbose mode.")
+	
+	def string_to_bool(self, pArg):
+  		if None == pArg:
+  			return False
+  		elif pArg.lower() in ("y", "yes", "true", "t", "1"):
+  			return True
+  		else:
+  			return False
 
 	def set_dataset_file(self, pFileName):
 		self.dataset_file = pFileName
@@ -422,12 +458,12 @@ class ControlVolumeTank():
 
 		# STANDARD DEVIATION
 		sdSet = self.get_last_n_prices(self.candleIndex)
-		standardDef = sdef.getStandardDeviation(sdSet).real
-		standardDef *= (math.pow(  math.pi*self.get_phi()  , 4) )
+		standardDev = sdef.getStandardDeviation(sdSet).real
+		standardDev *= (math.pow(  math.pi*self.get_phi()  , 4) )
 		
-		self.standard_dev_list.append([[self.previous_sdev_x, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDef]])
+		self.standard_dev_list.append([[self.previous_sdev_x, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDev]])
 		self.previous_sdev_x = self.new_x
-		self.previous_sdev_y = self.standard_dev_start_y-standardDef			
+		self.previous_sdev_y = self.standard_dev_start_y-standardDev			
 
 		self.new_x += (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
 
@@ -551,12 +587,12 @@ class ControlVolumeTank():
 
 			self.surf_window.unlock()
 			
-			self.display_text_large(self.truncated_dataset_file_name, 1000, 18, pygame.Color(255, 255, 255))
+			self.display_text_large(self.truncated_dataset_file_name, 950, 690, pygame.Color(255, 255, 255))
 						
 			# chart labels
-			text = "----" + str(self.DATASET_HIGHEST)
-			self.displayText(text, self.interpolate(self.DATASET_HIGHEST + 2), self.get_x_location_of_candle(self.DATASET_HIGHEST_INDEX),\
-				pygame.Color(255, 255, 0))
+			# text = "----" + str(self.DATASET_HIGHEST)
+			# self.displayText(text, self.interpolate(self.DATASET_HIGHEST + 2), self.get_x_location_of_candle(self.DATASET_HIGHEST_INDEX),\
+			# 	pygame.Color(255, 255, 0))
 
 			pygame.display.update()
 			self.fpsclock.tick(self.FRAME_RATE)
@@ -585,7 +621,6 @@ class ControlVolumeTank():
 				self.print_verbose( "Preparing final frame output to " + tmpFileName ) 
 				pygame.image.save(self.surf_window, tmpFileName)
 
-				# if self.make_histogram == True:
 				self.make_histogram( tmpFileName )
 
 				# Delete the temp file
@@ -606,16 +641,13 @@ class ControlVolumeTank():
 			print("nothing to convert in " + tmpDir)
 			return
 
-		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -qscale:v 1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mpg"
 		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mp4"
 
 		os.system( arg )
 
 		# make an AVI so we can convert into GIF
 		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".avi"
-
 		os.system( arg )
-
 
 		# delete all PNGs from this location when done.
 		shutil.rmtree(tmpDir)
@@ -687,7 +719,7 @@ class ControlVolumeTank():
 			# ----- TEST AREA -----------------------------------------------------------------------	
 			# TODO: determine if we can be smarter about how many lines to show per sigma low
 
-			largest = heapq.nlargest(40, enumerate(tmpList), key=lambda x: x[1])
+			largest = heapq.nlargest(self.sigma_sort_low, enumerate(tmpList), key=lambda x: x[1])
 
 			for item in largest:
 				self.print_debug( item )
@@ -698,19 +730,72 @@ class ControlVolumeTank():
 			# ----------------------------------------------------------------------------------------
 
 		# Draw histogram at the top of the chart
-		for r in range(0, len(imbalanceRatioArray)):
-			self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.special_number(), r, 100+imbalanceRatioArray[r][0]*self.special_number()), \
-				fill=(self.COLOR_HISTOGRAM_UP), width=1 )
-			self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.special_number(), r, 100+imbalanceRatioArray[r][1]*self.special_number()), \
-				fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+		if self.show_histogram_ratio == True:
+			for r in range(0, len(imbalanceRatioArray)):
+				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.special_number(), r, 100+imbalanceRatioArray[r][0]*self.special_number()), \
+					fill=(self.COLOR_HISTOGRAM_UP), width=1 )
+				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.special_number(), r, 100+imbalanceRatioArray[r][1]*self.special_number()), \
+					fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+
+		if self.show_histogram_simple_average == True:
+			# Draw a simple average of the ratio - this section draws for the blue side
+			tmpAvg1 = []
+			for r in range(0, len(imbalanceRatioArray)): 
+				tmpAvg = 0
+				tmpthing = 0 
+				for f in range(0, 10):
+					tmpthing += imbalanceRatioArray[r-f][0]
+				tmpAvg = tmpthing/10
+				tmpAvg1.append(tmpAvg)
+			for r in range(0, len( tmpAvg1 ) ):
+				self.draw.line(( r-1, 100+tmpAvg1[r-1]*self.special_number(), r, 100+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
 		
+			# TODO: draw the pink side
+
+		if self.show_histogram_standard_dev == True:
+			# Draw a standard deviation line based on the particle counts
+			# histogram up - blue
+			sdevParticles = []
+			sigmaLookbackParticleCount = self.histogram_standard_dev_period
+			sdevParticlesAdjust = 2
+			offsetY = 125
+			for r in range(0, len(imbalanceRatioArray)): 
+				topParticlesSet = []
+				for f in range(0, sigmaLookbackParticleCount):
+					topParticlesSet.append( imbalanceRatioArray[r-f][0] )			
+				standardDev = sdef.getStandardDeviation(topParticlesSet).real
+				standardDev *= (math.pow(  math.pi*self.get_phi(), sdevParticlesAdjust) )
+				standardDev *= -1  # negative adjustment to flip the projection
+				sdevParticles.append( standardDev )		
+			for r in range(0, len( sdevParticles ) ):
+				self.draw.line(( r-1, offsetY+sdevParticles[r-1]*self.special_number(), r, offsetY+sdevParticles[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
+
+			# histogram down - pink
+			sdevParticles = []
+			for r in range(0, len(imbalanceRatioArray)): 
+				bottomParticlesSet = []
+				for f in range(0, sigmaLookbackParticleCount):
+					bottomParticlesSet.append( imbalanceRatioArray[r-f][1] )			
+				standardDev = sdef.getStandardDeviation(bottomParticlesSet).real
+				standardDev *= (math.pow(  math.pi*self.get_phi(), sdevParticlesAdjust) )
+				standardDev *= -1  # negative adjustment to flip the projection
+				sdevParticles.append( standardDev )
+			for r in range(0, len( sdevParticles ) ):
+				self.draw.line(( r-1, offsetY+sdevParticles[r-1]*self.special_number(), r, offsetY+sdevParticles[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+
+
+		# Build the histogram directory if it's not there	
 		if not os.path.exists(self.render_histogram_directory + self.histogram_animation_directory):
 			os.makedirs(self.render_histogram_directory + self.histogram_animation_directory)
 
-		current_time = "" # TBD
+		# TODO: consider putting local timestamp on histogram
+		local_current_time = "" # TBD
 
-		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + current_time + "_" + self.number_formatter(self.offset_index)  + "_sig" + str( self.sigma_period ) + ".png", format='PNG')
+		# Save the histogram
+		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + local_current_time + "_" + self.number_formatter(self.offset_index)  + "_sig" + str( self.sigma_period ) + ".png", format='PNG')
 		self.print_verbose(self.dataset_file + " simulation done.")
+
+		# Automatically display the image
 		# img.show()
 
 	def set_permutation_name(self, pIterationNumber):
