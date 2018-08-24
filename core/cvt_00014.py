@@ -209,6 +209,12 @@ class ControlVolumeTank():
 		if args.histosdperiod:
 			self.histogram_standard_dev_period = int(args.histosdperiod)
 
+		if self.string_to_bool(args.showhistosimpleaverage): 
+			self.show_histogram_simple_average = True
+
+		if args.histosimpleaverageperiod:
+			self.histogram_simple_average_period = int(args.histosimpleaverageperiod)
+
 		if args.debug and args.verbose:
 			self.print_debug("Running in verbose mode with debug messages.")
 		elif args.debug and not args.verbose:
@@ -740,17 +746,27 @@ class ControlVolumeTank():
 		if self.show_histogram_simple_average == True:
 			# Draw a simple average of the ratio - this section draws for the blue side
 			tmpAvg1 = []
+			offsetY = 80
 			for r in range(0, len(imbalanceRatioArray)): 
 				tmpAvg = 0
 				tmpthing = 0 
-				for f in range(0, 10):
+				for f in range(0, self.histogram_simple_average_period):
 					tmpthing += imbalanceRatioArray[r-f][0]
-				tmpAvg = tmpthing/10
+				tmpAvg = tmpthing/self.histogram_simple_average_period
 				tmpAvg1.append(tmpAvg)
 			for r in range(0, len( tmpAvg1 ) ):
-				self.draw.line(( r-1, 100+tmpAvg1[r-1]*self.special_number(), r, 100+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
+				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
 		
-			# TODO: draw the pink side
+			tmpAvg1 = []
+			for r in range(0, len(imbalanceRatioArray)): 
+				tmpAvg = 0
+				tmpthing = 0 
+				for f in range(0, self.histogram_simple_average_period):
+					tmpthing += imbalanceRatioArray[r-f][1]
+				tmpAvg = tmpthing/self.histogram_simple_average_period
+				tmpAvg1.append(tmpAvg)
+			for r in range(0, len( tmpAvg1 ) ):
+				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
 
 		if self.show_histogram_standard_dev == True:
 			# Draw a standard deviation line based on the particle counts
