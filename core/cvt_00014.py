@@ -155,27 +155,35 @@ class ControlVolumeTank():
 		self.verbose = False
 		self.debug = False
 		self.candleIndex = 0
-		self.highlight_sigma = True # can be overridden by passing in -highlightsigma argument
-		self.sigma_period = 17 # can be overridden by passing in -sigmaperiod argument
+		self.highlight_sigma = True # can be overridden by passing in -highlight_sigma argument
+		self.sigma_period = 17 # can be overridden by passing in -sigma_period argument
 		self.show_histogram_ratio = True
 		self.show_histogram_standard_dev = False
 		self.histogram_standard_dev_period = 7
 		self.show_histogram_simple_average = False
 		self.histogram_simple_average_period = 9
 		self.sigma_sort_low = 40
+		self.offset_index_override = 0
 
-		helpMessage = 'See README.md and setup_instructions.md for specifics. Otherwise, try ' + TextColors.OKGREEN + 'python cvt_00014.py --sigmaperiod 23 --highlightsigma True -v ' + TextColors.ENDC + \
-			 " or try " + TextColors.OKGREEN +  "python cvt_00014.py --sigmaperiod 19 -v -hrat False -hsd True -hsdper 34" + TextColors.ENDC
+		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
+			"• Standard deviation of price (SD, yellow line at bottom) + lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 23 --highlight_sigma True -v ' + TextColors.ENDC + "\n" + \
+			"• Price SD + histogram SD of particle distribution: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 19 -v -hrat False -hsd True -hsdp 34" + TextColors.ENDC + "\n" + \
+			"• Price SD + histogram moving average (MA) of particle distribution: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 17 -v -hrat False -hsa True -hsap 23" + TextColors.ENDC + "\n" + \
+			"• Price SD + histogram MA with a larger set of low SD highlighted: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -hrat True -ssl 100" + TextColors.ENDC + "\n" + \
+			"• Start at some other index in the dataset (e.g. 120 candles from latest): " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -oo 120 -hrat 1" + TextColors.ENDC + "\n" + \
+			" "
 
-		parser = argparse.ArgumentParser(description=helpMessage, epilog=textwrap.dedent('''---'''), formatter_class=argparse.RawTextHelpFormatter)
-		parser.add_argument('-s', '--highlightsigma', dest='highlightsigma', required=False, help="Paint lines from low sigma regions to the top of the chart. This helps isolate important areas in the histogram.")
-		parser.add_argument('-p', '--sigmaperiod', dest='sigmaperiod', required=False, help="The sigma period used to calculate the standard deviation. Default is 17.")
-		parser.add_argument('-hrat', '--showhistoratio', dest='showhistoratio', required=False, help="Show the histogram ratio lines.")
-		parser.add_argument('-hsd', '--showhistosd', dest='showhistosd', required=False, help="Show a standard deviation line of the histogram.")
-		parser.add_argument('-hsdper', '--histosdperiod', dest='histosdperiod', required=False, help="Histogram standard deviation period. Default is 7.")
-		parser.add_argument('-hsa', '--showhistosimpleaverage', dest='showhistosimpleaverage', required=False, help="Show a simple average line of the histogram.")
-		parser.add_argument('-hsap', '--histosimpleaverageperiod', dest='histosimpleaverageperiod', required=False, help="Histogram simple average period. Default is 9.")
-		parser.add_argument('-ssl', '--sigmasortlow', dest='sigmasortlow', required=False, help="The number of samples to use for highlighting the low points in sigma. Default is 40. Higher numbers will add more lines and include a larger range.")
+			
+		parser = argparse.ArgumentParser(description=helpMessage, epilog=textwrap.dedent(""), formatter_class=argparse.RawTextHelpFormatter)
+		parser.add_argument('-s', '--highlight_sigma', dest='highlight_sigma', required=False, help="Paint lines from low sigma regions to the top of the chart. This helps isolate important areas in the histogram.")
+		parser.add_argument('-p', '--sigma_period', dest='sigma_period', required=False, help="The sigma period used to calculate the standard deviation. Default is 17.")
+		parser.add_argument('-hrat', '--show_histo_ratio', dest='show_histo_ratio', required=False, help="Show the histogram ratio lines.")
+		parser.add_argument('-hsd', '--show_histo_sd', dest='show_histo_sd', required=False, help="Show a standard deviation line of the histogram.")
+		parser.add_argument('-hsdp', '--histo_sd_period', dest='histo_sd_period', required=False, help="Histogram standard deviation period. Default is 7.")
+		parser.add_argument('-hsa', '--show_histo_simple_average', dest='show_histo_simple_average', required=False, help="Show a simple average line of the histogram.")
+		parser.add_argument('-hsap', '--histo_simple_average_period', dest='histo_simple_average_period', required=False, help="Histogram simple average period. Default is 9.")
+		parser.add_argument('-ssl', '--sigma_sort_low', dest='sigma_sort_low', required=False, help="The number of samples to use for highlighting the low points in sigma. Default is 40. Higher numbers will add more lines and include a larger range.")
+		parser.add_argument('-oo', '--offset_index_override', dest='offset_index_override', required=False, help="The index of the current data set to begin at. This is helpful if you see a breakout candle somewhere in the past and want to run the simulation with that price being at the far right of the chart.")
 
 		parser.add_argument('-v','--verbose', dest='verbose', action='store_true', help="Explain what is being done.")
 		parser.add_argument('-d','--debug', dest='debug', action='store_true', help="Lower level messages for debugging.")		
@@ -189,31 +197,34 @@ class ControlVolumeTank():
 		if args.debug:
 			self.debug = True
 
-		if self.string_to_bool(args.highlightsigma):
+		if self.string_to_bool(args.highlight_sigma):
 			self.highlight_sigma = True
 
-		if self.string_to_bool(args.showhistoratio): 
+		if self.string_to_bool(args.show_histo_ratio): 
 			self.show_histogram_ratio = True
 		else:
 			self.show_histogram_ratio = False
 
-		if args.sigmaperiod: 
-			self.sigma_period = int( args.sigmaperiod )
+		if args.sigma_period: 
+			self.sigma_period = int( args.sigma_period )
 
-		if args.sigmasortlow: 
-			self.sigma_sort_low = int( args.sigmasortlow )
+		if args.sigma_sort_low: 
+			self.sigma_sort_low = int( args.sigma_sort_low )
 
-		if self.string_to_bool(args.showhistosd): 
+		if self.string_to_bool(args.show_histo_sd): 
 			self.show_histogram_standard_dev = True
 
-		if args.histosdperiod:
-			self.histogram_standard_dev_period = int(args.histosdperiod)
+		if args.histo_sd_period:
+			self.histogram_standard_dev_period = int(args.histo_sd_period)
 
-		if self.string_to_bool(args.showhistosimpleaverage): 
+		if self.string_to_bool(args.show_histo_simple_average): 
 			self.show_histogram_simple_average = True
 
-		if args.histosimpleaverageperiod:
-			self.histogram_simple_average_period = int(args.histosimpleaverageperiod)
+		if args.histo_simple_average_period:
+			self.histogram_simple_average_period = int(args.histo_simple_average_period)
+
+		if args.offset_index_override:
+			self.offset_index_override = int(args.offset_index_override)
 
 		if args.debug and args.verbose:
 			self.print_debug("Running in verbose mode with debug messages.")
@@ -869,6 +880,8 @@ for i in range(0, arbitraryRunLimit):
 
 			if lookback > 1:
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
+			if cvt.offset_index_override != 0:
+				cvt.offset_index = cvt.offset_index_override
 			cvt.dataset_file = dataset
 			print( "Current OHLC dataset: " + TextColors.HEADERLEFT2 + TextColors.INVERTED + dataset + TextColors.ENDC)
 			random.seed()
