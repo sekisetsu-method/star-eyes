@@ -165,6 +165,7 @@ class ControlVolumeTank():
 		self.sigma_sort_low = 40 # the number of sigma lines to draw
 		self.offset_index_override = 0 # the index of the candle to begin a simulation
 		self.sample_period_size = 1 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
+		self.permutation_index = 0 # the outer loop index, this will be appended to file name, and is useful for running multiple simulations on one dataset in order to observe variances in particle distribution
 
 		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
 			"• Standard deviation of price (SD, yellow line at bottom) + lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 23 --highlight_sigma True -v ' + TextColors.ENDC + "\n" + \
@@ -825,7 +826,14 @@ class ControlVolumeTank():
 		local_current_time = "" # TBD
 
 		# Save the histogram
-		img.save(self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + local_current_time + "_" + self.number_formatter(self.offset_index)  + "_sig" + str( self.sigma_period ) + ".png", format='PNG')
+		img.save(self.render_histogram_directory + \
+				 self.histogram_animation_directory + \
+				 self.truncated_dataset_file_name + "_" + \
+				 # local_current_time + "_" + \
+				 self.number_formatter(self.offset_index) + "_" + \
+				 self.number_formatter(self.permutation_index) + \
+				 "_sig" + str( self.sigma_period ) + \
+				 ".png", format='PNG')
 		self.print_verbose(self.dataset_file + " simulation done.")
 
 		# Automatically display the image
@@ -884,6 +892,7 @@ for r in range(0, arbitraryRunLimit):
 		while i < lookback:		
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
 			lookback = int(cvt.sample_period_size) # override if this was passed in
+			cvt.permutation_index = r
 
 			if lookback > 1:
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
