@@ -174,6 +174,7 @@ class ControlVolumeTank():
 			"• Price SD + histogram MA with a larger set of low SD highlighted: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -hrat True -ssl 100" + TextColors.ENDC + "\n" + \
 			"• Start at some other index in the dataset (e.g. 120 candles from latest): " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -oo 120 -hrat 1" + TextColors.ENDC + "\n" + \
 			"• Start at some other index and march forward N candles: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -oo 120 -sps 10 -hrat 1" + TextColors.ENDC + "\n" + \
+			"• Run a series of simulations at the same index: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 23 -v -oo 127 -hrat 1 -ssl 1" + TextColors.ENDC + "\n" + \
 			" "
 
 			
@@ -665,13 +666,17 @@ class ControlVolumeTank():
 			print("nothing to convert in " + tmpDir)
 			return
 
-		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mp4"
-
-		os.system( arg )
+		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v libx264 -pix_fmt yuv420p -crf 23 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".mp4"
+		# os.system( arg )
 
 		# make an AVI so we can convert into GIF
-		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".avi"
-		# os.system( arg )
+		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/temp.avi"
+		os.system( arg )
+
+		arg = "ffmpeg -i " + self.render_frames_directory + "/temp.avi -pix_fmt rgb24 -y " + self.render_frames_directory + "/" + \
+		self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) + "_sig" + str( self.sigma_period ) + ".gif"
+		os.system( arg )
+		os.system( "rm " + self.render_frames_directory + "temp.avi" )
 
 		# delete all PNGs from this location when done.
 		shutil.rmtree(tmpDir)
@@ -818,22 +823,32 @@ class ControlVolumeTank():
 				self.draw.line(( r-1, offsetY+sdevParticles[r-1]*self.special_number(), r, offsetY+sdevParticles[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
 
 
-		# Build the histogram directory if it's not there	
-		if not os.path.exists(self.render_histogram_directory + self.histogram_animation_directory):
-			os.makedirs(self.render_histogram_directory + self.histogram_animation_directory)
+		# Build the histogram directory if it's not there
+		gif_animation_directory = self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) 	
+		if not os.path.exists( gif_animation_directory ):
+			os.makedirs( gif_animation_directory )
 
 		# TODO: consider putting local timestamp on histogram
 		local_current_time = "" # TBD
 
 		# Save the histogram
-		img.save(self.render_histogram_directory + \
-				 self.histogram_animation_directory + \
+		img.save(gif_animation_directory + "/" + \
 				 self.truncated_dataset_file_name + "_" + \
 				 # local_current_time + "_" + \
 				 self.number_formatter(self.offset_index) + "_" + \
 				 self.number_formatter(self.permutation_index) + \
 				 "_sig" + str( self.sigma_period ) + \
 				 ".png", format='PNG')
+
+		# make a gif from available images
+		arg = "ffmpeg -pattern_type glob -i '" + gif_animation_directory + "/*.png' -y " + gif_animation_directory + "/temp.avi"
+		os.system( arg )
+		arg = "ffmpeg -i " + gif_animation_directory + "/temp.avi -pix_fmt rgb24 -y " + gif_animation_directory + "/" + \
+				self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) + "_sig" + str( self.sigma_period ) + ".gif"
+		os.system( arg )
+		os.system( "rm " + gif_animation_directory + "temp.avi" )
+
+
 		self.print_verbose(self.dataset_file + " simulation done.")
 
 		# Automatically display the image
