@@ -162,8 +162,9 @@ class ControlVolumeTank():
 		self.histogram_standard_dev_period = 7
 		self.show_histogram_simple_average = False
 		self.histogram_simple_average_period = 9
-		self.sigma_sort_low = 40
-		self.offset_index_override = 0
+		self.sigma_sort_low = 40 # the number of sigma lines to draw
+		self.offset_index_override = 0 # the index of the candle to begin a simulation
+		self.sample_period_size = 1 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
 
 		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
 			"• Standard deviation of price (SD, yellow line at bottom) + lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 23 --highlight_sigma True -v ' + TextColors.ENDC + "\n" + \
@@ -171,6 +172,7 @@ class ControlVolumeTank():
 			"• Price SD + histogram moving average (MA) of particle distribution: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 17 -v -hrat False -hsa True -hsap 23" + TextColors.ENDC + "\n" + \
 			"• Price SD + histogram MA with a larger set of low SD highlighted: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -hrat True -ssl 100" + TextColors.ENDC + "\n" + \
 			"• Start at some other index in the dataset (e.g. 120 candles from latest): " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -oo 120 -hrat 1" + TextColors.ENDC + "\n" + \
+			"• Start at some other index and march forward N candles: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -oo 120 -sps 10 -hrat 1" + TextColors.ENDC + "\n" + \
 			" "
 
 			
@@ -184,6 +186,7 @@ class ControlVolumeTank():
 		parser.add_argument('-hsap', '--histo_simple_average_period', dest='histo_simple_average_period', required=False, help="Histogram simple average period. Default is 9.")
 		parser.add_argument('-ssl', '--sigma_sort_low', dest='sigma_sort_low', required=False, help="The number of samples to use for highlighting the low points in sigma. Default is 40. Higher numbers will add more lines and include a larger range.")
 		parser.add_argument('-oo', '--offset_index_override', dest='offset_index_override', required=False, help="The index of the current data set to begin at. This is helpful if you see a breakout candle somewhere in the past and want to run the simulation with that price being at the far right of the chart.")
+		parser.add_argument('-sps', '--sample_period_size', dest='sample_period_size', required=False, help="The size of the sample set of candles to run a simulation on. Use with offset index override -oo.")
 
 		parser.add_argument('-v','--verbose', dest='verbose', action='store_true', help="Explain what is being done.")
 		parser.add_argument('-d','--debug', dest='debug', action='store_true', help="Lower level messages for debugging.")		
@@ -213,6 +216,9 @@ class ControlVolumeTank():
 
 		if self.string_to_bool(args.show_histo_sd): 
 			self.show_histogram_standard_dev = True
+
+		if args.sample_period_size:
+			self.sample_period_size = int(args.sample_period_size)
 
 		if args.histo_sd_period:
 			self.histogram_standard_dev_period = int(args.histo_sd_period)
@@ -663,8 +669,8 @@ class ControlVolumeTank():
 		os.system( arg )
 
 		# make an AVI so we can convert into GIF
-		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".avi"
-		os.system( arg )
+		# arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/" + self.truncated_dataset_file_name + ".avi"
+		# os.system( arg )
 
 		# delete all PNGs from this location when done.
 		shutil.rmtree(tmpDir)
@@ -862,7 +868,7 @@ app_yaml = open("../config/app.yaml", "r").readlines()
 path_to_csv_files = app_yaml[0].split(":")[1] # TODO: make this a little smarter
 
 arbitraryRunLimit = 99 # The number of times to run the simulation
-for i in range(0, arbitraryRunLimit): 
+for r in range(0, arbitraryRunLimit): 
 
 	dataset_list = []
 
@@ -873,15 +879,17 @@ for i in range(0, arbitraryRunLimit):
 		dataset_list.append(csvfile) # Add the files to a list
 
 	for dataset in dataset_list[:1]: # Loop up to [:N] datasets e.g. [:3]		
-		lookback = 1 # To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
-		
-		for i in range(0, lookback):		
+		lookback = 1 # Default is 1. To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
+		i = 0
+		while i < lookback:		
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
+			lookback = int(cvt.sample_period_size) # override if this was passed in
 
 			if lookback > 1:
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
 			if cvt.offset_index_override != 0:
-				cvt.offset_index = cvt.offset_index_override
+				cvt.offset_index = cvt.offset_index_override - i
+				print("-------- Beginning at candle ", cvt.offset_index)
 			cvt.dataset_file = dataset
 			print( "Current OHLC dataset: " + TextColors.HEADERLEFT2 + TextColors.INVERTED + dataset + TextColors.ENDC)
 			random.seed()
@@ -890,3 +898,4 @@ for i in range(0, arbitraryRunLimit):
 			cvt.set_particles_birth_count( particle_birth_count ) #4000 for production
 			cvt.set_candle_gutter( 1 )
 			cvt.game_run()
+			i += 1
