@@ -612,7 +612,7 @@ class ControlVolumeTank():
 
 			self.surf_window.unlock()
 			
-			self.display_text_large(self.truncated_dataset_file_name, 950, 690, pygame.Color(255, 255, 255))
+			self.display_text_large(self.truncated_dataset_file_name, 10, 695, pygame.Color(255, 255, 255))
 						
 			# chart labels
 			# text = "----" + str(self.DATASET_HIGHEST)
@@ -673,7 +673,7 @@ class ControlVolumeTank():
 		arg = "ffmpeg -framerate 30 -pattern_type glob -i '" + tmpDir + "*.png' -c:v ffv1 -y " + self.render_frames_directory + "/temp.avi"
 		os.system( arg )
 
-		arg = "ffmpeg -i " + self.render_frames_directory + "/temp.avi -pix_fmt rgb24 -y " + self.render_frames_directory + "/" + \
+		arg = "ffmpeg -i " + self.render_frames_directory + "/temp.avi -pix_fmt rgb8 -y " + self.render_frames_directory + "/" + \
 		self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) + "_sig" + str( self.sigma_period ) + ".gif"
 		os.system( arg )
 		os.system( "rm " + self.render_frames_directory + "temp.avi" )
@@ -843,11 +843,10 @@ class ControlVolumeTank():
 		# make a gif from available images
 		arg = "ffmpeg -pattern_type glob -i '" + gif_animation_directory + "/*.png' -y " + gif_animation_directory + "/temp.avi"
 		os.system( arg )
-		arg = "ffmpeg -i " + gif_animation_directory + "/temp.avi -pix_fmt rgb24 -y " + gif_animation_directory + "/" + \
+		arg = "ffmpeg -i " + gif_animation_directory + "/temp.avi -pix_fmt rgb8 -y " + gif_animation_directory + "/" + \
 				self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) + "_sig" + str( self.sigma_period ) + ".gif"
 		os.system( arg )
-		os.system( "rm " + gif_animation_directory + "temp.avi" )
-
+		os.system( "rm " + gif_animation_directory + "/temp.avi" )
 
 		self.print_verbose(self.dataset_file + " simulation done.")
 
@@ -913,13 +912,13 @@ for r in range(0, arbitraryRunLimit):
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
 			if cvt.offset_index_override != 0:
 				cvt.offset_index = cvt.offset_index_override - i
-				print("-------- Beginning at candle ", cvt.offset_index)
+				print("Beginning at candle " + str( cvt.offset_index ))
 			cvt.dataset_file = dataset
 			print( "Current OHLC dataset: " + TextColors.HEADERLEFT2 + TextColors.INVERTED + dataset + TextColors.ENDC)
 			random.seed()
 			cvt.set_particles_diameter( 2 )
 			cvt.set_candlestick_width( 3 )
-			cvt.set_particles_birth_count( particle_birth_count ) #4000 for production
+			cvt.set_particles_birth_count( particle_birth_count )
 			cvt.set_candle_gutter( 1 )
 			cvt.game_run()
 			i += 1
