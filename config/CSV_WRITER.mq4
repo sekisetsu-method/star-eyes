@@ -53,7 +53,7 @@ int start()
 
 	if(handlefile>0)
 	{ 
-		for(int i=Bars-1; i>=1; i--)
+		for(int i=Bars-1; i>=0; i--)
 		{
 			date=TimeToStr(Time[i], TIME_DATE);
 			time=TimeToStr(Time[i], TIME_MINUTES);
@@ -67,7 +67,7 @@ int start()
 	}
 	else
 	{
-		for(i=Bars-1; i>=1; i--)
+		for(i=Bars-1; i>=0; i--)
 		{
 			date=TimeToStr(Time[i], TIME_DATE);
 			time=TimeToStr(Time[i], TIME_MINUTES);
@@ -94,13 +94,13 @@ int start()
 
 string constructComment()
 {
-	 date=TimeToStr(Time[1], TIME_DATE);
-	 time=TimeToStr(Time[1], TIME_MINUTES);
-	 high=DoubleToStr(High[1], Digits);
-	 low=DoubleToStr(Low[1], Digits);
-	 close=DoubleToStr(Close[1], Digits);
-	 open=DoubleToStr(Open[1], Digits);
-	 volume=DoubleToStr(Volume[1], 0);
+	 date=TimeToStr(Time[0], TIME_DATE);
+	 time=TimeToStr(Time[0], TIME_MINUTES);
+	 high=DoubleToStr(High[0], Digits);
+	 low=DoubleToStr(Low[0], Digits);
+	 close=DoubleToStr(Close[0], Digits);
+	 open=DoubleToStr(Open[0], Digits);
+	 volume=DoubleToStr(Volume[0], 0);
 	 Comment("CSV_WRITER ", Symbol(), " period M", Period(),"\n\n", "LAST BAR DATA : \n", "date	 =	",date,"\n",
 			 "time	 =	",time,"\n","high	 =	",high,"\n", "low	=	",low,"\n", "volume =	",volume);
 	 return("");

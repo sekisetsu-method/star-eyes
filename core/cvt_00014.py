@@ -164,7 +164,7 @@ class ControlVolumeTank():
 		self.histogram_simple_average_period = 9
 		self.sigma_sort_low = 40 # the number of sigma lines to draw
 		self.offset_index_override = 0 # the index of the candle to begin a simulation
-		self.sample_period_size = 1 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
+		self.sample_period_size = 0 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
 		self.permutation_index = 0 # the outer loop index, this will be appended to file name, and is useful for running multiple simulations on one dataset in order to observe variances in particle distribution
 
 		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
@@ -284,6 +284,7 @@ class ControlVolumeTank():
 
 		# this reverse orders the orig data so we can paint from left to right with it
 		startIndex = rowCount - self.offset_index - 315
+
 		for i in range( startIndex, rowCount - self.offset_index ):
 			tmpDataSet.append(lines[i])
 		
@@ -901,14 +902,14 @@ for r in range(0, arbitraryRunLimit):
 		dataset_list.append(csvfile) # Add the files to a list
 
 	for dataset in dataset_list[:1]: # Loop up to [:N] datasets e.g. [:3]		
-		lookback = 1 # Default is 1. To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
+		lookback = 0 # Default is 1. To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
 		i = 0
-		while i < lookback:		
+		while i <= lookback:		
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
 			lookback = int(cvt.sample_period_size) # override if this was passed in
 			cvt.permutation_index = r
 
-			if lookback > 1:
+			if lookback > 0:
 				cvt.offset_index = i  # Sets an index based on where we are at in the lookback sequence. If lookback is 1 then we aren't running multiple simulations off the same dataset, but fresh ones every time.
 			if cvt.offset_index_override != 0:
 				cvt.offset_index = cvt.offset_index_override - i
