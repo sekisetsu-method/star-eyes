@@ -106,10 +106,15 @@ class ControlVolumeTank():
 		self.DATASET_HIGHEST_INDEX = 0
 		self.DATASET_LOWEST_INDEX = 0
 		self.draw = ImageDraw.Draw
-		self.new_sdev_x = 0
+
 		self.previous_sdev_x = 0
 		self.previous_sdev_y = 900
 		self.standard_dev_start_y = 900 # these should match
+
+		self.previous_sdev_vol_x = 0
+		self.previous_sdev_vol_y = 850
+		self.standard_dev_vol_start_y = 850
+
 		self.FRAME_RATE = 24 
 		self.CANDLESTICK_WIDTH = 1
 		self.new_x_default_value = 10
@@ -139,6 +144,7 @@ class ControlVolumeTank():
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
 		self.COLOR_STANDARD_DEVIATION = pygame.Color("yellow")		
+		self.COLOR_STANDARD_DEVIATION_VOL = pygame.Color("blue")		
 		self.COLOR_HEAVY_PARTICLES = pygame.Color(0, 146, 255)
 		self.COLOR_LIGHT_PARTICLES = pygame.Color(255, 0, 255)
 		self.COLOR_HISTOGRAM_UP = (0, 146, 255)
@@ -150,6 +156,7 @@ class ControlVolumeTank():
 		self.heavy_particles = []
 		self.light_particles = []
 		self.standard_dev_list = []
+		self.standard_dev_list_vol = []
 		self.new_x = self.new_x_default_value
 		self.index_counter = 0
 		self.verbose = False
@@ -272,6 +279,9 @@ class ControlVolumeTank():
 	def draw_standard_dev_line(self, pCoords):
 		pygame.draw.line(self.surf_window, self.COLOR_STANDARD_DEVIATION, pCoords[0], pCoords[1], 1)
 
+	def draw_standard_dev_line_vol(self, pCoords):
+		pygame.draw.line(self.surf_window, self.COLOR_STANDARD_DEVIATION_VOL, pCoords[0], pCoords[1], 1)
+
 	def init_dataset(self):	
 		csvfile = open(self.dataset_file, 'r')
 		lines = csvfile.readlines() 
@@ -312,7 +322,7 @@ class ControlVolumeTank():
 		self.DATASET_LOWEST = int( round( float( min(tmpList))  ) ) -1
 		self.DATASET_HIGHEST = int( round( float( max(tmpList))  ) ) +1
 
-		firstRowRead = 0
+		# firstRowRead = 0
 		for row in self.dataset:
 			self.paint_candle(row) # returns 0 if row volume is empty
 			self.candleIndex += 1
@@ -445,7 +455,7 @@ class ControlVolumeTank():
 		if pRow == []:
 			return 0
 
-		timestamp = pRow[0]
+		timestamp = pRow[0][0]
 
 		# self.print_debug(timestamp)
 		# self.print_debug(self.dataset[pIndex])
@@ -455,7 +465,7 @@ class ControlVolumeTank():
 		priceHigh = self.interpolate(float(pRow.split(",")[3]))
 		priceLow = self.interpolate(float(pRow.split(",")[4]))
 		priceClose = self.interpolate(float(pRow.split(",")[5]))
-		# volume = float(pRow[6])
+		volume = self.interpolate(float(pRow[6]))
 
 		if self.DATASET_HIGHEST == priceHigh:
 			self.DATASET_HIGHEST_INDEX = self.candleIndex
@@ -482,15 +492,25 @@ class ControlVolumeTank():
 		tmpFric = 1
 		ep_shape_set_material(self.world, tmpBodyId, shape, tmpCoef, tmpFric, 0, 0)
 
-		# STANDARD DEVIATION
+		# PRICE STANDARD DEVIATION
 		sdSet = self.get_last_n_prices(self.candleIndex)
 		standardDev = sdef.getStandardDeviation(sdSet).real
-		standardDev *= (math.pow(  math.pi*self.get_phi()  , 4) )
+		standardDev *= (math.pow(  math.pi*self.get_phi(), 4) )
 		
 		self.standard_dev_list.append([[self.previous_sdev_x, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDev]])
 		self.previous_sdev_x = self.new_x
 		self.previous_sdev_y = self.standard_dev_start_y-standardDev			
 
+		# VOLUME SD
+		sdSetVol = self.get_last_n_volumes(self.candleIndex)
+		standardDevVol = sdef.getStandardDeviation(sdSetVol).real
+		standardDevVol *= (math.pow(  math.pi*self.get_phi(), 2.5) )
+
+		self.standard_dev_list_vol.append([[self.previous_sdev_vol_x, self.previous_sdev_vol_y], [self.new_x, self.standard_dev_vol_start_y-standardDevVol]])
+		self.previous_sdev_vol_x = self.new_x
+		self.previous_sdev_vol_y = self.standard_dev_vol_start_y-standardDevVol
+
+		# advance the x
 		self.new_x += (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
 
 		return 1
@@ -524,6 +544,34 @@ class ControlVolumeTank():
 			tmpList.append(priceHigh)
 			tmpList.append(priceLow)
 			tmpList.append(priceClose)
+
+		return tmpList
+
+	def get_last_n_volumes(self, pIndex):
+		tmpList = []
+		returnList = []
+		dsSubset = []
+		lookback = self.sigma_period
+
+		dsSubset.append( self.dataset[pIndex] )
+		try:
+			for i in range(1, lookback):
+				dsSubset.append( self.dataset[pIndex-i] )
+			
+		except Exception as e:
+			pass
+
+		for i in range(0, len(dsSubset)):
+			# priceOpen = float(dsSubset[i].split(",")[2])
+			# priceHigh = float(dsSubset[i].split(",")[3])
+			# priceLow = float(dsSubset[i].split(",")[4])
+			# priceClose = float(dsSubset[i].split(",")[5])
+			volume = int(dsSubset[i].split(",")[6])
+			# tmpList.append(priceOpen)
+			# tmpList.append(priceHigh)
+			# tmpList.append(priceLow)
+			# tmpList.append(priceClose)
+			tmpList.append(volume)
 
 		return tmpList
 
@@ -608,6 +656,9 @@ class ControlVolumeTank():
 			
 			for b in self.standard_dev_list:
 				self.draw_standard_dev_line(b)
+
+			for b in self.standard_dev_list_vol:
+				self.draw_standard_dev_line_vol(b)
 
 			pygame.display.set_caption(self.truncated_dataset_file_name + "    |||    " + str( self.offset_index  ) + " steps back " )
 
@@ -825,7 +876,8 @@ class ControlVolumeTank():
 
 
 		# Build the histogram directory if it's not there
-		gif_animation_directory = self.render_histogram_directory + self.histogram_animation_directory + self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) 	
+		gif_animation_directory = self.render_histogram_directory + self.histogram_animation_directory + \
+								  self.truncated_dataset_file_name + "_" + self.number_formatter(self.offset_index) + "_sig" + str( self.sigma_period )
 		if not os.path.exists( gif_animation_directory ):
 			os.makedirs( gif_animation_directory )
 
