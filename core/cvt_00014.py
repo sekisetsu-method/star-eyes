@@ -536,14 +536,14 @@ class ControlVolumeTank():
 			pass
 
 		for i in range(0, len(dsSubset)):
-			priceOpen = float(dsSubset[i].split(",")[2])
-			priceHigh = float(dsSubset[i].split(",")[3])
-			priceLow = float(dsSubset[i].split(",")[4])
+			# priceOpen = float(dsSubset[i].split(",")[2])
+			# priceHigh = float(dsSubset[i].split(",")[3])
+			# priceLow = float(dsSubset[i].split(",")[4])
 			priceClose = float(dsSubset[i].split(",")[5])
-			tmpList.append(priceOpen)
-			tmpList.append(priceHigh)
-			tmpList.append(priceLow)
-			tmpList.append(priceClose)
+			# tmpList.append(priceOpen)
+			# tmpList.append(priceHigh)
+			# tmpList.append(priceLow)
+			tmpList.append(priceClose) # note: just using the close makes for a bit spikier, low notches are more defined
 
 		return tmpList
 
@@ -779,6 +779,50 @@ class ControlVolumeTank():
 			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
+		# Draw histogram at the top of the chart
+		if self.show_histogram_ratio == True:
+			for r in range(0, len(imbalanceRatioArray)):
+				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.special_number(), r, 100+imbalanceRatioArray[r][0]*self.special_number()), \
+					fill=(self.COLOR_HISTOGRAM_UP), width=1 )
+				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.special_number(), r, 100+imbalanceRatioArray[r][1]*self.special_number()), \
+					fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+
+		# ---------------------------------------------------------------------------		
+		# Draw a simple average of the ratio - this section draws for the blue side
+
+		# note: we are doing the averaging even if we don't show it, 
+		# this is because we need the average to perform other work later on
+
+		tmpAvg1 = []
+		offsetY = 80
+		for r in range(0, len(imbalanceRatioArray)): 
+			tmpAvg = 0
+			tmpthing = 0 
+			for f in range(0, self.histogram_simple_average_period):
+				tmpthing += imbalanceRatioArray[r-f][0]
+			tmpAvg = tmpthing/self.histogram_simple_average_period
+			tmpAvg1.append(tmpAvg)
+
+		if self.show_histogram_simple_average == True:
+			for r in range(0, len( tmpAvg1 ) ):
+				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
+		
+		# Draw a simple average of the ratio - this section draws for the pink side
+		tmpAvg1 = []
+		for r in range(0, len(imbalanceRatioArray)): 
+			tmpAvg = 0
+			tmpthing = 0 
+			for f in range(0, self.histogram_simple_average_period):
+				tmpthing += imbalanceRatioArray[r-f][1]
+			tmpAvg = tmpthing/self.histogram_simple_average_period
+			tmpAvg1.append(tmpAvg)
+
+		if self.show_histogram_simple_average == True:
+			for r in range(0, len( tmpAvg1 ) ):
+				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+
+		# ---------------------------------------------------------------------------
+
 		if self.highlight_sigma == True:
 
 			# DRAW VERTICAL LINE AT POINT OF LOWEST STANDARD DEV
@@ -803,45 +847,37 @@ class ControlVolumeTank():
 			largest = heapq.nlargest(self.sigma_sort_low, enumerate(tmpList), key=lambda x: x[1])
 
 			for item in largest:
-				self.print_debug( item )
+				# self.print_debug( item )
 
 				tmpX = self.standard_dev_list[item[0]][1][0]
 				tmpY = item[1]
-				self.draw.line(( tmpX, 150, tmpX, tmpY ), fill=(self.COLOR_ENTRY_SIGNAL), width=1 )
+
+				buyers = abs( imbalanceRatioArray[ self.get_x_location_of_candle( item[0] ) ][0] )
+				sellers = abs( imbalanceRatioArray[ self.get_x_location_of_candle( item[0] ) ][1] )
+				tmpYIndicatorStart = self.standard_dev_list_vol[  item[0]  ][0][1]
+				if ( buyers > sellers):
+					self.draw.line(( tmpX, tmpYIndicatorStart, tmpX, tmpY ), fill=(self.COLOR_ENTRY_SIGNAL), width=1 )
+				elif ( sellers > buyers):
+					self.draw.line(( tmpX, tmpYIndicatorStart, tmpX, tmpY ), fill=( (255,0,0) ), width=1 )	
+
+				# orig
+				# self.draw.line(( tmpX, 150, tmpX, tmpY ), fill=(self.COLOR_ENTRY_SIGNAL), width=1 )
+
+
+				# test area
+				# new idea: 
+				# while we are looping the low sigmas, 
+				# get the histogram average based on which index we're on
+				# self.print_debug( imbalanceRatioArray[ self.get_x_location_of_candle( item[0] ) ][0]  )
+
+				# compare this with what the volume is doing
+
+				# self.print_debug(  self.standard_dev_list_vol[  item[0]  ] ) 
+
 			# ----------------------------------------------------------------------------------------
-
-		# Draw histogram at the top of the chart
-		if self.show_histogram_ratio == True:
-			for r in range(0, len(imbalanceRatioArray)):
-				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][0]*self.special_number(), r, 100+imbalanceRatioArray[r][0]*self.special_number()), \
-					fill=(self.COLOR_HISTOGRAM_UP), width=1 )
-				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.special_number(), r, 100+imbalanceRatioArray[r][1]*self.special_number()), \
-					fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
-
-		if self.show_histogram_simple_average == True:
-			# Draw a simple average of the ratio - this section draws for the blue side
-			tmpAvg1 = []
-			offsetY = 80
-			for r in range(0, len(imbalanceRatioArray)): 
-				tmpAvg = 0
-				tmpthing = 0 
-				for f in range(0, self.histogram_simple_average_period):
-					tmpthing += imbalanceRatioArray[r-f][0]
-				tmpAvg = tmpthing/self.histogram_simple_average_period
-				tmpAvg1.append(tmpAvg)
-			for r in range(0, len( tmpAvg1 ) ):
-				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
-		
-			tmpAvg1 = []
-			for r in range(0, len(imbalanceRatioArray)): 
-				tmpAvg = 0
-				tmpthing = 0 
-				for f in range(0, self.histogram_simple_average_period):
-					tmpthing += imbalanceRatioArray[r-f][1]
-				tmpAvg = tmpthing/self.histogram_simple_average_period
-				tmpAvg1.append(tmpAvg)
-			for r in range(0, len( tmpAvg1 ) ):
-				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
+		# print("-------------------")
+		# print(len(imbalanceRatioArray))		
+		# print(len(self.standard_dev_list))
 
 		if self.show_histogram_standard_dev == True:
 			# Draw a standard deviation line based on the particle counts
