@@ -977,15 +977,15 @@ class ControlVolumeTank():
 # Place or write all CSV files in the directory specified in app.yaml.
 app_yaml = open("../config/app.yaml", "r").readlines()
 path_to_csv_files = app_yaml[0].split(":")[1] # TODO: make this a little smarter
-
 arbitraryRunLimit = 99 # The number of times to run the simulation
+
 for r in range(0, arbitraryRunLimit): 
 
 	dataset_list = []
-
-	files = glob.glob(path_to_csv_files + "/*.csv") # Get all the CSV files
-
+	path_to_csv_files = path_to_csv_files.strip() + "/*.csv"
+	files = glob.glob(path_to_csv_files) # Get all the CSV files
 	files.sort(key=os.path.getmtime) # Sort the files based on latest
+	
 	for csvfile in reversed(files):
 		dataset_list.append(csvfile) # Add the files to a list
 
