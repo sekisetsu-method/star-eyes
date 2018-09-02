@@ -593,12 +593,12 @@ class ControlVolumeTank():
 
 		while self.run == True:	
 			for event in pygame.event.get():
-				if event.type == QUIT:
+				if event.type == "QUIT":
 					pygame.quit()
 					sys.exit()
-				elif event.type == MOUSEMOTION:
+				elif event.type == "MOUSEMOTION":
 					self.mouse_x, self.mouse_y = event.pos
-				elif event.type == MOUSEBUTTONDOWN:
+				elif event.type == "MOUSEBUTTONDOWN":
 					self.mouse_x, self.mouse_y = event.pos
 					if ep_world_collision_test_circle(self.world, 0, self.mouse_x, self.mouse_y, 0, 1, 1, 0) > 0:
 						b = ep_world_get_collision_body(self.world, 0)
@@ -608,15 +608,15 @@ class ControlVolumeTank():
 							yy = ep_body_coord_world_to_local_y(self.world, b, self.mouse_x, self.mouse_y)
 							mousehingejoint = ep_hingejoint_create(self.world, b, self.mouseParticleId, xx, yy, 0, 0, 0)
 							ep_hingejoint_set_max_force(self.world, mousehingejoint, 10000)
-				elif event.type == MOUSEBUTTONUP:
+				elif event.type == "MOUSEBUTTONUP":
 					self.mouse_x, self.mouse_y = event.pos
 					if self.MOUSE_HINGE_JOINT != -1.0:
 						ep_hingejoint_destroy(self.world, self.MOUSE_HINGE_JOINT)
 						self.MOUSE_HINGE_JOINT = -1.0
-				elif event.type == KEYDOWN:
-					if event.key == K_ESCAPE:
+				elif event.type == "KEYDOWN":
+					if event.key == "K_ESCAPE":
 						pygame.event.post(pygame.event.Event(QUIT))
-					elif event.key == K_r:
+					elif event.key == "K_r":
 						self.game_end()
 						self.game_start()
 			
