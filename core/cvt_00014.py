@@ -983,17 +983,22 @@ arbitraryRunLimit = 99 # The number of times to run the simulation
 for r in range(0, arbitraryRunLimit): 
 
 	dataset_list = []
-	path_to_csv_files = path_to_csv_files.strip() + "/*.csv"
+	if r == 0: # only strip this the first time
+		path_to_csv_files = path_to_csv_files.strip() + "/*.csv"
 	files = glob.glob(path_to_csv_files) # Get all the CSV files
 	files.sort(key=os.path.getmtime) # Sort the files based on latest
 	
 	for csvfile in reversed(files):
 		dataset_list.append(csvfile) # Add the files to a list
+	print("-----------------",dataset_list[:1])
+
 
 	for dataset in dataset_list[:1]: # Loop up to [:N] datasets e.g. [:3]		
 		lookback = 0 # Default is 1. To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
 		i = 0
-		while i <= lookback:		
+		while i <= lookback:
+			print("-------------------------------------------------")
+
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
 			lookback = int(cvt.sample_period_size) # override if this was passed in
 			cvt.permutation_index = r
