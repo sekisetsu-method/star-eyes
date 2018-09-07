@@ -175,7 +175,8 @@ class ControlVolumeTank():
 		self.permutation_index = 0 # the outer loop index, this will be appended to file name, and is useful for running multiple simulations on one dataset in order to observe variances in particle distribution
 
 		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
-			"• Standard deviation of price (SD, yellow line at bottom) + lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 23 --highlight_sigma True -v ' + TextColors.ENDC + "\n" + \
+			"• Standard deviation of price (SD, yellow line) + Volume SD (blue line) + 100 lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 17 -hrat 1 -v -ssl 100' + TextColors.ENDC + "\n" + \
+			"• Price SD + lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 23 --highlight_sigma True -v ' + TextColors.ENDC + "\n" + \
 			"• Price SD + histogram SD of particle distribution: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 19 -v -hrat False -hsd True -hsdp 34" + TextColors.ENDC + "\n" + \
 			"• Price SD + histogram moving average (MA) of particle distribution: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 17 -v -hrat False -hsa True -hsap 23" + TextColors.ENDC + "\n" + \
 			"• Price SD + histogram MA with a larger set of low SD highlighted: " + TextColors.OKGREEN +  "python cvt_00014.py --sigma_period 34 -v -hrat True -ssl 100" + TextColors.ENDC + "\n" + \
