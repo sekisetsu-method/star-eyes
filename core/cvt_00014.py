@@ -169,7 +169,7 @@ class ControlVolumeTank():
 		self.histogram_standard_dev_period = 7
 		self.show_histogram_simple_average = False
 		self.histogram_simple_average_period = 9
-		self.sigma_sort_low = 40 # the number of sigma lines to draw
+		self.sigma_sort_low = 100 # the number of sigma lines to draw
 		self.offset_index_override = 0 # the index of the candle to begin a simulation
 		self.sample_period_size = 0 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
 		self.permutation_index = 0 # the outer loop index, this will be appended to file name, and is useful for running multiple simulations on one dataset in order to observe variances in particle distribution
@@ -213,10 +213,8 @@ class ControlVolumeTank():
 		if self.string_to_bool(args.highlight_sigma):
 			self.highlight_sigma = True
 
-		if self.string_to_bool(args.show_histo_ratio): 
-			self.show_histogram_ratio = True
-		else:
-			self.show_histogram_ratio = False
+		if args.show_histo_ratio: 
+			self.show_histogram_ratio = self.string_to_bool(args.show_histo_ratio)
 
 		if args.sigma_period: 
 			self.sigma_period = int( args.sigma_period )
@@ -990,14 +988,11 @@ for r in range(0, arbitraryRunLimit):
 	
 	for csvfile in reversed(files):
 		dataset_list.append(csvfile) # Add the files to a list
-	print("-----------------",dataset_list[:1])
-
 
 	for dataset in dataset_list[:1]: # Loop up to [:N] datasets e.g. [:3]		
 		lookback = 0 # Default is 1. To loop iterations within a dataset use following loop with lookback. e.g., setting this to 60 will use one dataset to create 60 simulations, each one starting a candle earlier. Useful for looking for patterns on old data. Set lookback to 1 when running in a production/trading mode, assuming your CSV file is being updated in real time.	
 		i = 0
 		while i <= lookback:
-			print("-------------------------------------------------")
 
 			cvt = ControlVolumeTank() # The ControlVolumeTank is the class running the simulation.
 			lookback = int(cvt.sample_period_size) # override if this was passed in
