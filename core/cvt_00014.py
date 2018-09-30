@@ -107,13 +107,13 @@ class ControlVolumeTank():
 		self.DATASET_LOWEST_INDEX = 0
 		self.draw = ImageDraw.Draw
 
-		self.previous_sdev_x = 0
 		self.previous_sdev_y = 900
-		self.standard_dev_start_y = 900 # these should match
-
-		self.previous_sdev_vol_x = 0
+		self.standard_dev_start_y = 900
+		self.previous_money_flow_y = 900
 		self.previous_sdev_vol_y = 850
 		self.standard_dev_vol_start_y = 850
+		self.previous_sd_mfi_y = 800
+		self.standardDevMFI = 0
 
 		self.FRAME_RATE = 24 
 		self.CANDLESTICK_WIDTH = 1
@@ -123,6 +123,10 @@ class ControlVolumeTank():
 		self.run = True
 		self.DATASET_LOWEST = 107 # overridden, used for scaling the chart into this game window
 		self.DATASET_HIGHEST = 111  # overridden
+		self.DATASET_VOLUME_HIGHEST = 0 # overridden
+		self.DATASET_VOLUME_LOWEST = 0 # overridden
+		self.price_high = 0
+		self.price_low = 0
 		self.offset_index = 0 # used for cycling through the T axis
 		self.truncated_dataset_file_name = ""
 		self.PAINTABLE_LIMIT = 1268 # used as a canvas limit so there are some venting gaps on L and R side of chart
@@ -144,12 +148,13 @@ class ControlVolumeTank():
 		self.mouse_y = 0
 		self.color_static = pygame.Color(52, 30, 162)
 		self.COLOR_STANDARD_DEVIATION = pygame.Color("yellow")		
-		self.COLOR_STANDARD_DEVIATION_VOL = pygame.Color("blue")		
+		self.COLOR_STANDARD_DEVIATION_VOL = pygame.Color("blue")	
 		self.COLOR_HEAVY_PARTICLES = pygame.Color(0, 146, 255)
 		self.COLOR_LIGHT_PARTICLES = pygame.Color(255, 0, 255)
 		self.COLOR_HISTOGRAM_UP = (0, 146, 255)
 		self.COLOR_HISTOGRAM_DOWN = (255, 0, 255)
 		self.COLOR_ENTRY_SIGNAL = (0, 255, 100)
+		self.COLOR_MONEY_FLOW_INDEX = pygame.Color("green")		
 		self.MOUSE_HINGE_JOINT = -1.0
 		self.edge_boxes = []
 		self.candlestick_boxes = []
@@ -157,6 +162,9 @@ class ControlVolumeTank():
 		self.light_particles = []
 		self.standard_dev_list = []
 		self.standard_dev_list_vol = []
+		self.mfi = []
+		self.mfi_calc = []
+		self.mfi_standard_dev = []
 		self.new_x = self.new_x_default_value
 		self.index_counter = 0
 		self.verbose = False
@@ -169,10 +177,11 @@ class ControlVolumeTank():
 		self.histogram_standard_dev_period = 7
 		self.show_histogram_simple_average = False
 		self.histogram_simple_average_period = 9
-		self.sigma_sort_low = 100 # the number of sigma lines to draw
+		self.sigma_sort_low = 315 # the number of sigma lines to draw
 		self.offset_index_override = 0 # the index of the candle to begin a simulation
 		self.sample_period_size = 0 # override this to e.g. 10, and set the offset_index_override to e.g. 55 
 		self.permutation_index = 0 # the outer loop index, this will be appended to file name, and is useful for running multiple simulations on one dataset in order to observe variances in particle distribution
+		self.candlePlusGutterWidth = (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
 
 		helpMessage = 'See README.md and setup_instructions.md for specifics. Here are some commands to try: \n' + \
 			"• Standard deviation of price (SD, yellow line) + Volume SD (blue line) + 100 lowest sigma values highlighted in green: " + TextColors.OKGREEN + 'python cvt_00014.py --sigma_period 17 -hrat 1 -v -ssl 100' + TextColors.ENDC + "\n" + \
@@ -281,6 +290,21 @@ class ControlVolumeTank():
 	def draw_standard_dev_line_vol(self, pCoords):
 		pygame.draw.line(self.surf_window, self.COLOR_STANDARD_DEVIATION_VOL, pCoords[0], pCoords[1], 1)
 
+	def draw_mfi(self, pCoords, pIndex):
+		# self.new_x-candlePlusGutterWidth, self.previous_money_flow_y
+		# self.new_x, self.standard_dev_vol_start_y - newMfCalc
+		# priceHigh, priceLow
+
+		twoCandles = self.candlePlusGutterWidth * 2
+
+		# if self.mfi[pIndex][1][1] < self.mfi[pIndex-1][1][1] and self.mfi[pIndex-1][1][1] > self.mfi[pIndex-2][1][1]: 
+		# # we have spiked up and down
+		# 	pygame.draw.line(  self.surf_window, pygame.Color("red"), ( self.candlePlusGutterWidth * pIndex,pCoords[2][0]-20 ), ( self.candlePlusGutterWidth * pIndex,pCoords[2][0] + twoCandles)  )
+		pygame.draw.line(self.surf_window, pygame.Color("gray"), pCoords[0], pCoords[1], 1)
+
+	def draw_sd_mfi(self, pCoords):
+		pygame.draw.line(self.surf_window, pygame.Color("gray"), pCoords[0], pCoords[1], 1)
+
 	def init_dataset(self):	
 		csvfile = open(self.dataset_file, 'r')
 		lines = csvfile.readlines() 
@@ -300,7 +324,9 @@ class ControlVolumeTank():
 		self.dataset = tmpDataSet
 
 		tmpList = []
+		tmpVolList = []
 		tmpCount = 0
+		tmpMFI = []
 
 		for row in self.dataset:
 			# if tmpCount > 0:			
@@ -308,18 +334,24 @@ class ControlVolumeTank():
 			# tmpTruncatedRow = row[1:4] # works for dukascopy
 			rowList = row.split(",")
 			# self.print_debug(rowList)
-			tmpTruncatedRow = rowList[2:6] # works for metatrader
-			# self.print_debug(tmpTruncatedRow)
+			tmpTruncatedRow = rowList[2:6] # works for metatrader					
 
 			if tmpTruncatedRow != []:
 				tmpList.append(  max(tmpTruncatedRow)  )
 				tmpList.append(  min(tmpTruncatedRow)  )
 
-			# if tmpCount == 0:
-			# 	tmpCount = 1
+			tmpTruncatedRow = rowList[6:7]
+			if tmpTruncatedRow != []:
+				tmpVolList.append(  float( tmpTruncatedRow[0].strip() )  )
 
 		self.DATASET_LOWEST = int( round( float( min(tmpList))  ) ) -1
 		self.DATASET_HIGHEST = int( round( float( max(tmpList))  ) ) +1
+
+		self.DATASET_VOLUME_LOWEST = int( round( float( min(tmpVolList) * self.DATASET_LOWEST )  ) ) -1
+		self.DATASET_VOLUME_HIGHEST = int( round( float( max(tmpVolList) * self.DATASET_HIGHEST )  ) ) +1
+
+		self.DATASET_MFI_HIGHEST = 100 #self.DATASET_HIGHEST * self.DATASET_VOLUME_HIGHEST
+		self.DATASET_MFI_LOWEST = 0 #self.DATASET_LOWEST * self.DATASET_VOLUME_LOWEST
 
 		# firstRowRead = 0
 		for row in self.dataset:
@@ -448,6 +480,9 @@ class ControlVolumeTank():
 			return ep_shape_create_box(self.world, tmpId, self.PARTICLE_DIAMETER, self.PARTICLE_DIAMETER, 0, 0, 0, 1)
 
 	def paint_candle(self, pRow):
+
+		
+
 		if self.new_x >= self.PAINTABLE_LIMIT: # no matter the record count, limit candles to window width
 			return 0
 
@@ -455,16 +490,15 @@ class ControlVolumeTank():
 			return 0
 
 		timestamp = pRow[0][0]
-
-		# self.print_debug(timestamp)
-		# self.print_debug(self.dataset[pIndex])
+		self.print_debug(timestamp)
+		
 		# for dukascopy the rows are 1 thru 4
 		# for metatrader it's 2 through 5
 		priceOpen = self.interpolate(float(pRow.split(",")[2]))
 		priceHigh = self.interpolate(float(pRow.split(",")[3]))
 		priceLow = self.interpolate(float(pRow.split(",")[4]))
 		priceClose = self.interpolate(float(pRow.split(",")[5]))
-		volume = self.interpolate(float(pRow[6]))
+		volume = self.interpolate_volume(float(pRow.split(",")[6])) 
 
 		if self.DATASET_HIGHEST == priceHigh:
 			self.DATASET_HIGHEST_INDEX = self.candleIndex
@@ -486,6 +520,10 @@ class ControlVolumeTank():
 		tmpBodyId = self.get_static_body_id()
 		self.edge_boxes.append([self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0)])
 		shape = ep_shape_create_box(self.world, tmpBodyId, self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0), 1)
+		
+		# self.price_high = priceHigh + candleHeight/2
+		# self.price_low = newY
+
 		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
 		tmpCoef = 2
 		tmpFric = 1
@@ -496,8 +534,7 @@ class ControlVolumeTank():
 		standardDev = sdef.getStandardDeviation(sdSet).real
 		standardDev *= (math.pow(  math.pi*self.get_phi(), 4) )
 		
-		self.standard_dev_list.append([[self.previous_sdev_x, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDev]])
-		self.previous_sdev_x = self.new_x
+		self.standard_dev_list.append([[self.new_x-self.candlePlusGutterWidth, self.previous_sdev_y], [self.new_x, self.standard_dev_start_y-standardDev]])
 		self.previous_sdev_y = self.standard_dev_start_y-standardDev			
 
 		# VOLUME SD
@@ -505,12 +542,59 @@ class ControlVolumeTank():
 		standardDevVol = sdef.getStandardDeviation(sdSetVol).real
 		standardDevVol *= (math.pow(  math.pi*self.get_phi(), 2.5) )
 
-		self.standard_dev_list_vol.append([[self.previous_sdev_vol_x, self.previous_sdev_vol_y], [self.new_x, self.standard_dev_vol_start_y-standardDevVol]])
-		self.previous_sdev_vol_x = self.new_x
-		self.previous_sdev_vol_y = self.standard_dev_vol_start_y-standardDevVol
+		self.standard_dev_list_vol.append([[self.new_x-self.candlePlusGutterWidth, self.previous_sdev_vol_y], [self.new_x, self.standard_dev_vol_start_y-standardDevVol]])
+
+		# MONEY FLOW INDEX 		
+		positive_money_flow = 0 
+		negative_money_flow = 0 
+
+		highPriceSet = self.get_last_n_high_prices(self.candleIndex)
+		lowPriceSet = self.get_last_n_low_prices(self.candleIndex)
+
+		# sdSet is a present to past ordered list
+		# so we need to loop it in reverse
+
+		# this example uses high and low
+		# magicNumber = 1/137
+		# for i, k in reversed( list(enumerate(sdSet)) ):
+		# 	if i > 0:
+		# 		if highPriceSet[i] > highPriceSet[i-1]:
+		# 			positive_money_flow += highPriceSet[i] * sdSetVol[i] # * (1+magicNumber)
+
+		# 		if lowPriceSet[i] < lowPriceSet[i-1]:
+		# 			negative_money_flow += lowPriceSet[i] * sdSetVol[i] # * (1+magicNumber)
+
+		for i, k in reversed( list(enumerate(sdSet)) ):
+			if i > 0:
+				if highPriceSet[i] > highPriceSet[i-1]:
+					positive_money_flow += highPriceSet[i] * sdSetVol[i]
+
+				if lowPriceSet[i] < lowPriceSet[i-1]:
+					negative_money_flow += lowPriceSet[i] * sdSetVol[i]
+
+		money_flow_index = 100 * ( positive_money_flow / ( positive_money_flow + negative_money_flow) )
+		newMfCalc = self.interpolate_mfi( money_flow_index )
+
+		# RAW MFI
+		self.mfi.append( [[self.new_x-self.candlePlusGutterWidth, self.previous_money_flow_y], [self.new_x, self.standard_dev_vol_start_y - newMfCalc], [priceHigh, priceLow]] )
+		self.previous_money_flow_y = self.standard_dev_vol_start_y - newMfCalc
+		
+		# SD MFI
+		mfiSDAdjust = self.WINDOW_HEIGHT + 150
+		self.mfi_calc.append( newMfCalc )
+		if (self.candleIndex >= self.sigma_period):
+			sdSetMFI = self.mfi_calc[ -self.sigma_period:-1 ]
+			self.standardDevMFI = sdef.getStandardDeviation(sdSetMFI).real
+			self.standardDevMFI *= (math.pow(  math.pi*self.get_phi(), (2.97)) )
+
+		self.mfi_standard_dev.append( [[self.new_x-self.candlePlusGutterWidth, self.previous_sd_mfi_y], [self.new_x, mfiSDAdjust - self.standardDevMFI]] )
+		self.previous_sd_mfi_y = mfiSDAdjust - self.standardDevMFI
+
+		# VOLUME SD
+		self.previous_sdev_vol_y = self.standard_dev_vol_start_y - standardDevVol
 
 		# advance the x
-		self.new_x += (self.CANDLESTICK_WIDTH + self.CANDLE_GUTTER)
+		self.new_x += self.candlePlusGutterWidth
 
 		return 1
 
@@ -543,6 +627,58 @@ class ControlVolumeTank():
 			# tmpList.append(priceHigh)
 			# tmpList.append(priceLow)
 			tmpList.append(priceClose) # note: just using the close makes for a bit spikier, low notches are more defined
+
+		return tmpList
+
+	def get_last_n_high_prices(self, pIndex):
+		tmpList = []
+		returnList = []
+		dsSubset = []
+		lookback = self.sigma_period
+
+		dsSubset.append( self.dataset[pIndex] )
+		try:
+			for i in range(1, lookback):
+				dsSubset.append( self.dataset[pIndex-i] )
+			
+		except Exception as e:
+			pass
+
+		for i in range(0, len(dsSubset)):
+			# priceOpen = float(dsSubset[i].split(",")[2])
+			priceHigh = float(dsSubset[i].split(",")[3])
+			# priceLow = float(dsSubset[i].split(",")[4])
+			# priceClose = float(dsSubset[i].split(",")[5])
+			# tmpList.append(priceOpen)
+			tmpList.append(priceHigh)
+			# tmpList.append(priceLow)
+			# tmpList.append(priceClose)
+
+		return tmpList
+
+	def get_last_n_low_prices(self, pIndex):
+		tmpList = []
+		returnList = []
+		dsSubset = []
+		lookback = self.sigma_period
+
+		dsSubset.append( self.dataset[pIndex] )
+		try:
+			for i in range(1, lookback):
+				dsSubset.append( self.dataset[pIndex-i] )
+			
+		except Exception as e:
+			pass
+
+		for i in range(0, len(dsSubset)):
+			# priceOpen = float(dsSubset[i].split(",")[2])
+			# priceHigh = float(dsSubset[i].split(",")[3])
+			priceLow = float(dsSubset[i].split(",")[4])
+			# priceClose = float(dsSubset[i].split(",")[5])
+			# tmpList.append(priceOpen)
+			# tmpList.append(priceHigh)
+			tmpList.append(priceLow)
+			# tmpList.append(priceClose)
 
 		return tmpList
 
@@ -582,6 +718,14 @@ class ControlVolumeTank():
 
 	def interpolate(self, pVal):
 		newVal = interp(pVal, [self.DATASET_LOWEST, self.DATASET_HIGHEST ], [self.WINDOW_HEIGHT*self.HEIGHT_SCALING_FACTOR, 0])
+		return newVal
+
+	def interpolate_volume(self, pVal):
+		newVal = interp(pVal, [self.DATASET_VOLUME_LOWEST, self.DATASET_VOLUME_HIGHEST ], [self.WINDOW_HEIGHT*self.HEIGHT_SCALING_FACTOR, 0])
+		return newVal
+
+	def interpolate_mfi(self, pVal):
+		newVal = interp(pVal, [self.DATASET_MFI_LOWEST, self.DATASET_MFI_HIGHEST ], [self.WINDOW_HEIGHT, 0])
 		return newVal
 
 	def game_end(self):	
@@ -644,20 +788,25 @@ class ControlVolumeTank():
 					self.COLOR_HEAVY_PARTICLES)
 			
 			for b in self.light_particles:
-
 				self.draw_box(ep_body_get_x(self.world, b), \
 					ep_body_get_y(self.world, b), self.PARTICLE_DIAMETER, self.PARTICLE_DIAMETER, ep_body_get_rot(self.world, b), \
 					self.COLOR_LIGHT_PARTICLES)
 			
 			for b in self.candlestick_boxes:
 				self.draw_box(b[2], b[3], b[0], b[1], b[4], self.color_static)
-			
-			
+						
 			for b in self.standard_dev_list:
 				self.draw_standard_dev_line(b)
 
 			for b in self.standard_dev_list_vol:
 				self.draw_standard_dev_line_vol(b)
+
+			for b in self.mfi:
+				tmpIndex = self.mfi.index(b)
+				self.draw_mfi(b, tmpIndex)
+
+			for b in self.mfi_standard_dev:	
+				self.draw_sd_mfi(b)
 
 			pygame.display.set_caption(self.truncated_dataset_file_name + "    |||    " + str( self.offset_index  ) + " steps back " )
 
@@ -760,6 +909,7 @@ class ControlVolumeTank():
 		self.draw = ImageDraw.Draw(img)
 		pixels = img.load()
 		imbalanceRatioArray = []
+		offsetY = 80
 
 		for xx in range( img.size[0] ):
 
@@ -778,6 +928,8 @@ class ControlVolumeTank():
 			imbalanceRatio2 = (lightParticleCounter+1.0)/(heavyParticleCounter+1.0)
 			imbalanceRatioArray.append( [-imbalanceRatio1, imbalanceRatio2] )
 
+		tmpParticleFlowIndex = [] # experimental
+
 		# Draw histogram at the top of the chart
 		if self.show_histogram_ratio == True:
 			for r in range(0, len(imbalanceRatioArray)):
@@ -786,14 +938,23 @@ class ControlVolumeTank():
 				self.draw.line(( r-1, 100+imbalanceRatioArray[r-1][1]*self.special_number(), r, 100+imbalanceRatioArray[r][1]*self.special_number()), \
 					fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
 
+				# experimental
+				# particle_flow_index = 100 / (  (imbalanceRatioArray[r][0]+1) + (imbalanceRatioArray[r][1]+1) )
+				# tmpParticleFlowIndex.append(  particle_flow_index  )
+				# print(particle_flow_index)
+				# end experimental
+
+		# reducerFactor = 1
+		# for r in range(0, len( tmpParticleFlowIndex ) ):
+		# 	self.draw.line(( r-1, tmpParticleFlowIndex[r-1]*reducerFactor, r, tmpParticleFlowIndex[r]*reducerFactor), fill=(self.COLOR_HISTOGRAM_UP), width=2 )
+
 		# ---------------------------------------------------------------------------		
 		# Draw a simple average of the ratio - this section draws for the blue side
 
 		# note: we are doing the averaging even if we don't show it, 
 		# this is because we need the average to perform other work later on
 
-		tmpAvg1 = []
-		offsetY = 80
+		tmpAvg1 = []		
 		for r in range(0, len(imbalanceRatioArray)): 
 			tmpAvg = 0
 			tmpthing = 0 
@@ -819,8 +980,6 @@ class ControlVolumeTank():
 		if self.show_histogram_simple_average == True:
 			for r in range(0, len( tmpAvg1 ) ):
 				self.draw.line(( r-1, offsetY+tmpAvg1[r-1]*self.special_number(), r, offsetY+tmpAvg1[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
-
-		# ---------------------------------------------------------------------------
 
 		if self.highlight_sigma == True:
 
@@ -885,6 +1044,7 @@ class ControlVolumeTank():
 			sigmaLookbackParticleCount = self.histogram_standard_dev_period
 			sdevParticlesAdjust = 2
 			offsetY = 125
+
 			for r in range(0, len(imbalanceRatioArray)): 
 				topParticlesSet = []
 				for f in range(0, sigmaLookbackParticleCount):
@@ -892,7 +1052,8 @@ class ControlVolumeTank():
 				standardDev = sdef.getStandardDeviation(topParticlesSet).real
 				standardDev *= (math.pow(  math.pi*self.get_phi(), sdevParticlesAdjust) )
 				standardDev *= -1  # negative adjustment to flip the projection
-				sdevParticles.append( standardDev )		
+				sdevParticles.append( standardDev )	
+
 			for r in range(0, len( sdevParticles ) ):
 				self.draw.line(( r-1, offsetY+sdevParticles[r-1]*self.special_number(), r, offsetY+sdevParticles[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_UP), width=1 )
 
@@ -906,9 +1067,9 @@ class ControlVolumeTank():
 				standardDev *= (math.pow(  math.pi*self.get_phi(), sdevParticlesAdjust) )
 				standardDev *= -1  # negative adjustment to flip the projection
 				sdevParticles.append( standardDev )
+
 			for r in range(0, len( sdevParticles ) ):
 				self.draw.line(( r-1, offsetY+sdevParticles[r-1]*self.special_number(), r, offsetY+sdevParticles[r]*self.special_number()), fill=(self.COLOR_HISTOGRAM_DOWN), width=1 )
-
 
 		# Build the histogram directory if it's not there
 		gif_animation_directory = self.render_histogram_directory + self.histogram_animation_directory + \
@@ -918,6 +1079,9 @@ class ControlVolumeTank():
 
 		# TODO: consider putting local timestamp on histogram
 		local_current_time = "" # TBD
+
+		print(TextColors.HEADERLEFT + "░ " + TextColors.ENDC + TextColors.HEADERLEFT2 + "░ " + TextColors.ENDC + TextColors.HEADERLEFT3 + "░" + TextColors.ENDC)
+		print(TextColors.HEADERLEFT3 + " ░" + TextColors.ENDC + TextColors.HEADERLEFT + " ░" + TextColors.ENDC + TextColors.HEADERLEFT2 + " ░" + TextColors.ENDC)
 
 		# Save the histogram
 		img.save(gif_animation_directory + "/" + \
