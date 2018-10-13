@@ -174,6 +174,7 @@ class ControlVolumeTank():
 		self.sigma_period = 17 # can be overridden by passing in -sigma_period argument
 		self.show_histogram_ratio = True
 		self.show_histogram_standard_dev = False
+		self.show_MFI = False
 		self.histogram_standard_dev_period = 7
 		self.show_histogram_simple_average = False
 		self.histogram_simple_average_period = 9
@@ -206,6 +207,7 @@ class ControlVolumeTank():
 		parser.add_argument('-ssl', '--sigma_sort_low', dest='sigma_sort_low', required=False, help="The number of samples to use for highlighting the low points in sigma. Default is 40. Higher numbers will add more lines and include a larger range.")
 		parser.add_argument('-oo', '--offset_index_override', dest='offset_index_override', required=False, help="The index of the current data set to begin at. This is helpful if you see a breakout candle somewhere in the past and want to run the simulation with that price being at the far right of the chart.")
 		parser.add_argument('-sps', '--sample_period_size', dest='sample_period_size', required=False, help="The size of the sample set of candles to run a simulation on. Use with offset index override -oo.")
+		parser.add_argument('-mfi', '--show_mfi', dest='show_mfi', required=False, help="Display both MFI over the chart and MFI standard deviation at bottom.")
 
 		parser.add_argument('-v','--verbose', dest='verbose', action='store_true', help="Explain what is being done.")
 		parser.add_argument('-d','--debug', dest='debug', action='store_true', help="Lower level messages for debugging.")		
@@ -221,6 +223,9 @@ class ControlVolumeTank():
 
 		if self.string_to_bool(args.highlight_sigma):
 			self.highlight_sigma = True
+
+		if self.string_to_bool(args.show_mfi):
+			self.show_MFI = True
 
 		if args.show_histo_ratio: 
 			self.show_histogram_ratio = self.string_to_bool(args.show_histo_ratio)
@@ -481,8 +486,6 @@ class ControlVolumeTank():
 
 	def paint_candle(self, pRow):
 
-		
-
 		if self.new_x >= self.PAINTABLE_LIMIT: # no matter the record count, limit candles to window width
 			return 0
 
@@ -498,37 +501,32 @@ class ControlVolumeTank():
 		priceHigh = self.interpolate(float(pRow.split(",")[3]))
 		priceLow = self.interpolate(float(pRow.split(",")[4]))
 		priceClose = self.interpolate(float(pRow.split(",")[5]))
-		volume = self.interpolate_volume(float(pRow.split(",")[6])) 
+		volume = self.interpolate_volume(float(pRow.split(",")[6]))
+
+		'''
+		experiment: use open/close rather than high low
+		initial result seems to be high/low is more accurate
+		if priceOpen > priceClose:
+			priceHigh = priceOpen
+			priceLow = priceClose
+		else:
+			priceHigh = priceClose
+			priceLow = priceOpen
+
+		if priceOpen < priceClose:
+			priceLow = priceOpen
+			priceHigh = priceClose
+		else:
+			priceHigh = priceOpen
+			priceLow = priceClose
+		'''
 
 		if self.DATASET_HIGHEST == priceHigh:
 			self.DATASET_HIGHEST_INDEX = self.candleIndex
 
 		if self.DATASET_LOWEST == priceLow:
 			self.DATASET_LOWEST_INDEX = self.candleIndex
-
-		# experimental, use to filter out zero volume periods
-		# if volume == 0:
-		# 	return 0
-
-		candleHeight = 0
 		
-		# DETERMINE CANDLE PRICE HEIGHT
-		candleHeight = priceHigh - priceLow
-		newY = ((candleHeight/2)) + priceLow
-		candleHeight = abs(candleHeight)
-
-		tmpBodyId = self.get_static_body_id()
-		self.edge_boxes.append([self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0)])
-		shape = ep_shape_create_box(self.world, tmpBodyId, self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0), 1)
-		
-		# self.price_high = priceHigh + candleHeight/2
-		# self.price_low = newY
-
-		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
-		tmpCoef = 2
-		tmpFric = 1
-		ep_shape_set_material(self.world, tmpBodyId, shape, tmpCoef, tmpFric, 0, 0)
-
 		# PRICE STANDARD DEVIATION
 		sdSet = self.get_last_n_prices(self.candleIndex)
 		standardDev = sdef.getStandardDeviation(sdSet).real
@@ -592,6 +590,29 @@ class ControlVolumeTank():
 
 		# VOLUME SD
 		self.previous_sdev_vol_y = self.standard_dev_vol_start_y - standardDevVol
+
+		# experimental, use to filter out zero volume periods
+		# if volume == 0:
+		# 	return 0
+
+		candleHeight = 0
+		
+		# DETERMINE CANDLE PRICE HEIGHT
+		candleHeight = priceHigh - priceLow
+		newY = ((candleHeight/2)) + priceLow
+		candleHeight = abs(candleHeight)
+
+		tmpBodyId = self.get_static_body_id()
+		self.edge_boxes.append([self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0)])
+		shape = ep_shape_create_box(self.world, tmpBodyId, self.CANDLESTICK_WIDTH, candleHeight, self.new_x, newY, math.radians(0), 1)
+		
+		# self.price_high = priceHigh + candleHeight/2
+		# self.price_low = newY
+
+		ep_shape_set_collision(self.world, tmpBodyId, shape, 1, 1, 0)
+		tmpCoef = 2
+		tmpFric = 1
+		ep_shape_set_material(self.world, tmpBodyId, shape, tmpCoef, tmpFric, 0, 0)
 
 		# advance the x
 		self.new_x += self.candlePlusGutterWidth
@@ -802,11 +823,13 @@ class ControlVolumeTank():
 				self.draw_standard_dev_line_vol(b)
 
 			for b in self.mfi:
-				tmpIndex = self.mfi.index(b)
-				self.draw_mfi(b, tmpIndex)
+				if self.show_MFI == True:
+					tmpIndex = self.mfi.index(b)
+					self.draw_mfi(b, tmpIndex)
 
 			for b in self.mfi_standard_dev:	
-				self.draw_sd_mfi(b)
+				if self.show_MFI == True:
+					self.draw_sd_mfi(b)
 
 			pygame.display.set_caption(self.truncated_dataset_file_name + "    |||    " + str( self.offset_index  ) + " steps back " )
 

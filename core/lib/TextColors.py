@@ -21,5 +21,4 @@ HEADERLEFT3 = WARNING + "░" + WARNING + "▒" + WARNING + "▓" + WARNING + "�
 # HEADERLEFT = WARNING + "░" + FAIL + "▒" + CYAN + "▓" + OKGREEN + "█"
 
 def printLogo():
-    print(" ")
     print("         ▓█░▓       ▓██▓   ▒░█░    ▒░█░                      ▒                  ")
